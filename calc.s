@@ -3,8 +3,8 @@ NULL EQU 0
 DEFAULT_STACK_SIZE EQU 5
 MAX_LINE_LENGTH EQU 80
 
-; SIGNATURE: func_entry(n)
-;    n - locals size (in bytes)
+; SIGNATURE: func_entry(n = 0)
+;    n - locals size (in bytes). default is 0
 ; DESCRIPTION: Prepares the stack frame before executing the function
 
 ; esp -= n
@@ -17,7 +17,7 @@ MAX_LINE_LENGTH EQU 80
 %endmacro
 
 ; SIGNATURE: func_exit(p_ret_val = eax)
-;   p_ret_val - A place to put function return value. default = eax
+;   p_ret_val - A place to put function return value. default is eax
 ; DESCRIPTION: cleans stack frame before exiting the function (after function execution)
 %macro func_exit 0-1 eax
     popad
@@ -27,16 +27,16 @@ MAX_LINE_LENGTH EQU 80
     ret
 %endmacro
 
-; SIGNATURE: call_func(p_ret_val, func, ... args)
+; SIGNATURE: func_call(p_ret_val, func, ... args)
 ;   p_ret_val   - A place to put function return value
 ;   func        - the function to call
 ;   args        - list of arguments to pass to the function
 ; DESCRIPTION: calls the function <func> with args <args> and puts the return value in <p_ret_val>
 ; EXAMPLE:
-;   call_func [r], fgets, ebx, MAX_LINE_LENGTH, [stdin]
+;   func_call [r], fgets, ebx, MAX_LINE_LENGTH, [stdin]
 ;   the above is semantically equivalent to:
 ;       [r] = fgets(ebx, MAX_LINE_LENGTH, [stdin])
-%macro call_func 2-*
+%macro func_call 2-*
     %rep %0-2
         %rotate -1
         push dword %1
@@ -101,8 +101,8 @@ main:
     sub esp, MAX_LINE_LENGTH+4
 
     lea ebx, [buf]
-    call_func [r], fgets, ebx, MAX_LINE_LENGTH, [stdin]
-    call_func eax, printf, [r]
+    func_call [r], fgets, ebx, MAX_LINE_LENGTH, [stdin]
+    func_call eax, printf, [r]
     printf_line "%d", [r]
 
     ; push dword [stdin]
@@ -208,7 +208,7 @@ ByteLink_ctor: ; ctor(byte b, ByteLink* next): ByteLink*
     func_entry 4
 
     ; eax = b_link = malloc(sizeof(ByteLink));
-    call_func [$b_link], malloc, sizeof_ByteLink
+    func_call [$b_link], malloc, sizeof_ByteLink
     mov eax, dword [$b_link]
 
     ; b_link->b = b;
@@ -249,7 +249,7 @@ ByteLink_freeList: ; freeList(ByteLink *list): void
         mov dword [$next], eax
 
         ; free(current);
-        call_func eax, free, [$current]
+        func_call eax, free, [$current]
 
         ; current = next;
         mov eax, dword [$next]
@@ -274,7 +274,7 @@ ByteLink_addAtStart: ; addAtStart(ByteLink** list, byte b): void
 
     ; b_link = ByteLink(b, *list);
     mov eax, dword [$list]
-    call_func [$b_link], ByteLink_ctor, [$b], [eax]
+    func_call [$b_link], ByteLink_ctor, [$b], [eax]
 
     ; *list = b_link;
     mov eax, dword [$list]
