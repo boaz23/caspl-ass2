@@ -6,7 +6,7 @@ MAX_LINE_LENGTH EQU 80
 ; DESCRIPTION: Prepares the stack frame before executing the function
 
 ; esp -= n
-%macro func_entry 1
+%macro func_entry 0-1 0
     push ebp
     mov ebp, esp
     sub esp, %1
