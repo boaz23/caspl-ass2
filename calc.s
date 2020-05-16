@@ -1,3 +1,47 @@
+DEFAULT_STACK_SIZE EQU 5
+MAX_LINE_LENGTH EQU 80
+
+%macro func_init 1
+    push ebp
+    mov ebp, esp
+    sub esp, %1
+    pushfd
+    pushad
+%endmacro
+
+%macro func_ret 0-1 eax
+    popad
+    popfd
+    mov eax, %1
+    mov esp, ebp
+    ret
+%endmacro
+
+%macro call_func 2-*
+    %rep %0-2
+        %rotate -1
+        push dword %1
+    %endrep
+    %rotate -1
+    call %1
+    %rotate -1
+    mov %1, eax
+    add esp, (%0-2)*4
+%endmacro
+
+%macro printf_line 1-*
+    section	.rodata
+        %%format: db %1, 10, 0
+    section	.text
+        %rep %0-1
+            %rotate -1
+            push dword %1
+        %endrep
+        push %%format
+        call printf
+        add esp, (%0-1)*4
+%endmacro
+
 section .rodata
 
 section .bss
@@ -95,7 +139,7 @@ BigIntegerStack_isFull: ; isFull(BigStackInteger* s): boolean
 ; }
 %endif
 
-; NOTE: byte cannot be passed on the stack, we pass a WORD (2 bytes) instead
+; NOTE: byte cannot be passed on the stack, we pass a DWORD (4 bytes) instead
 sizeof_ByteLink EQU 5
 %define ByteLink_b(bl) bl+0
 %define ByteLink_next(bl) bl+1
@@ -103,7 +147,7 @@ sizeof_ByteLink EQU 5
 ByteLink_ctor: ; ctor(byte b, ByteLink* next): ByteLink*
     %push
     %define b ebp+8
-    %define next ebp+10
+    %define next ebp+12
 
     %pop
 
@@ -218,3 +262,21 @@ BigInteger_print: ; print(BigInteger* n): void
 
     %pop
 
+;silly_swap: 
+;
+;    %push                       ; save the current context 
+;    %stacksize small            ; tell NASM to use bp 
+;    %assign %$localsize 0       ; see text for explanation 
+;    %local old_ax:word, old_dx:word 
+;
+;        enter   %$localsize,0   ; see text for explanation 
+;        mov     [old_ax],ax     ; swap ax & bx 
+;        mov     [old_dx],dx     ; and swap dx & cx 
+;        mov     ax,bx 
+;        mov     dx,cx 
+;        mov     bx,[old_ax] 
+;        mov     cx,[old_dx] 
+;        leave                   ; restore old bp 
+;        ret                     ; 
+;
+;    %pop                        ; restore original context

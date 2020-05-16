@@ -1,0 +1,3 @@
+signal trap - look for pushfd, popfd, popad, pushad
+question marks in segmentation fault address - stack management problems. maybe near end of main
+enclose a function call with labels and compare regs value - if different, maybe a problem
