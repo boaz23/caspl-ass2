@@ -1,6 +1,11 @@
 DEFAULT_STACK_SIZE EQU 5
 MAX_LINE_LENGTH EQU 80
 
+; SIGNATURE: func_init(n)
+;    n - locals size (in bytes)
+; DESCRIPTION: Prepares the stack frame before executing the function
+
+; esp -= n
 %macro func_init 1
     push ebp
     mov ebp, esp
@@ -9,6 +14,9 @@ MAX_LINE_LENGTH EQU 80
     pushad
 %endmacro
 
+; SIGNATURE: func_ret(p_ret_val = eax)
+;   p_ret_val - A place to put function return value. default = eax
+; DESCRIPTION: cleans stack frame before exiting the function (after function execution)
 %macro func_ret 0-1 eax
     popad
     popfd
@@ -17,6 +25,15 @@ MAX_LINE_LENGTH EQU 80
     ret
 %endmacro
 
+; SIGNATURE: call_func(p_ret_val, func, ... args)
+;   p_ret_val   - A place to put function return value
+;   func        - the function to call
+;   args        - list of arguments to pass to the function
+; DESCRIPTION: calls the function <func> with args <args> and puts the return value in <p_ret_val>
+; EXAMPLE:
+;   call_func [r], fgets, ebx, MAX_LINE_LENGTH, [stdin]
+;   the above is semantically equivalent to:
+;       [r] = fgets(ebx, MAX_LINE_LENGTH, [stdin])
 %macro call_func 2-*
     %rep %0-2
         %rotate -1
@@ -29,6 +46,12 @@ MAX_LINE_LENGTH EQU 80
     add esp, (%0-2)*4
 %endmacro
 
+; SIGNATURE: printf_line(format_str, ... args)
+; DESCRIPTION: calls printf with format_str followed by new line and null terminator with the specified args
+; EXAMPLE:
+;   printf_line "%d", [r]
+;   the above is semantically equivalent to:
+;       printf("%d\n", [r])
 %macro printf_line 1-*
     section	.rodata
         %%format: db %1, 10, 0
@@ -68,10 +91,38 @@ section .text
     extern stderr
 
 main:
+    %push
+    %define buf ebp-MAX_LINE_LENGTH
+    %define r ebp-MAX_LINE_LENGTH-4
+
+    mov ebp, esp
+    sub esp, MAX_LINE_LENGTH+4
+
+    lea ebx, [buf]
+    call_func [r], fgets, ebx, MAX_LINE_LENGTH, [stdin]
+    call_func eax, printf, [r]
+    printf_line "%d", [r]
+
+    ; push dword [stdin]
+    ; push dword MAX_LINE_LENGTH
+    ; push dword ebx
+    ; call fgets
+    ; mov [ebp-MAX_LINE_LENGTH-4], eax
+    ; add esp, 12
+
+    ; lea ebx, [ebp-MAX_LINE_LENGTH]
+    ; push dword ebx
+    ; call printf
+    ; add esp, 4
+
+    mov esp, ebp
+
     mov     ebx,eax
     mov     eax,1
     int     0x80
     nop
+
+    %pop
 
 ;------------------- class BigIntegerStack -------------------
 %ifdef COMMENT
