@@ -94,8 +94,8 @@ section .text
 
 main:
     %push
-    %define buf ebp-MAX_LINE_LENGTH
-    %define r ebp-MAX_LINE_LENGTH-4
+    %define $buf ebp-MAX_LINE_LENGTH
+    %define $r ebp-MAX_LINE_LENGTH-4
 
     mov ebp, esp
     sub esp, MAX_LINE_LENGTH+4
@@ -148,34 +148,34 @@ sizeof_BigIntegerStack EQU 12
 
 BigIntegerStack_ctor: ; ctor(int capacity): BigInteger*
     %push
-    %define capacity ebp+8
+    %define $capacity ebp+8
 
     %pop
 
 BigIntegerStack_push: ; push(BigStackInteger* s, BigInteger* n): void
     %push
-    %define s ebp+8
-    %define n ebp+12
+    %define $s ebp+8
+    %define $n ebp+12
 
     %pop
 
 BigIntegerStack_pop: ; pop(BigStackInteger* s): BigInteger*
     %push
-    %define s ebp+8
+    %define $s ebp+8
 
     %pop
 
 
 BigIntegerStack_hasAtLeastItems: ; hasAtLeastItems(BigStackInteger* s, int amount): boolean
     %push
-    %define s ebp+8
-    %define amount ebp+12
+    %define $s ebp+8
+    %define $amount ebp+12
 
     %pop
     
 BigIntegerStack_isFull: ; isFull(BigStackInteger* s): boolean
     %push
-    %define s ebp+8
+    %define $s ebp+8
 
     %pop
 
@@ -286,8 +286,8 @@ ByteLink_addAtStart: ; addAtStart(ByteLink** list, byte b): void
 
 ByteLink_padStartWithZeros: ; padStartWithZeros(ByteLink* list, int count): void
     %push
-    %define list ebp+8
-    %define count ebp+12
+    %define $list ebp+8
+    %define $count ebp+12
 
     %pop
 
@@ -319,66 +319,66 @@ sizeof_BigInteger EQU 8
 
 BigInteger_ctor: ; ctor(ByteLink* list, int hexDigitsLen): BigInteger*
     %push
-    %define list ebp+8
-    %define hexDigitsLen ebp+12
+    %define $list ebp+8
+    %define $hexDigitsLen ebp+12
 
     %pop
 
 BigInteger_duplicate: ; duplicate(BigInteger* n): BigInteger*
     %push
-    %define n ebp+8
+    %define $n ebp+8
 
     %pop
 
 BigInteger_free: ; free(BigInteger* n): void
     %push
-    %define n ebp+8
+    %define $n ebp+8
 
     %pop
 
 BigInteger_getHexDigitsLen: ; getHexDigitsLen(BigInteger* n): BigInteger*
     %push
-    %define n ebp+8
+    %define $n ebp+8
 
     %pop
 
 BigInteger_add: ; add(BigInteger* n1, BigInteger* n2): BigInteger*
     %push
-    %define n1 ebp+8
-    %define n2 ebp+12
+    %define $n1 ebp+8
+    %define $n2 ebp+12
 
     %pop
 
 BigInteger_and: ; and(BigInteger* n1, BigInteger* n2): BigInteger*
     %push
-    %define n1 ebp+8
-    %define n2 ebp+12
+    %define $n1 ebp+8
+    %define $n2 ebp+12
 
     %pop
 
 BigInteger_or: ; or(BigInteger* n1, BigInteger* n2): BigInteger*
     %push
-    %define n1 ebp+8
-    %define n2 ebp+12
+    %define $n1 ebp+8
+    %define $n2 ebp+12
 
     %pop
 
 BigInteger_multiply: ; multiply(BigInteger* n1, BigInteger* n2): BigInteger*
     %push
-    %define n1 ebp+8
-    %define n2 ebp+12
+    %define $n1 ebp+8
+    %define $n2 ebp+12
 
     %pop
 
 BigInteger_removeLeadingZeroes: ; removeLeadingZeroes(BigInteger* n): void
     %push
-    %define n ebp+8
+    %define $n ebp+8
 
     %pop
 
 BigInteger_print: ; print(BigInteger* n): void
     %push
-    %define n ebp+8
+    %define $n ebp+8
 
     %pop
 
