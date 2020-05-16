@@ -1,3 +1,5 @@
+NULL EQU 0
+
 DEFAULT_STACK_SIZE EQU 5
 MAX_LINE_LENGTH EQU 80
 
@@ -197,22 +199,89 @@ sizeof_ByteLink EQU 5
 
 ByteLink_ctor: ; ctor(byte b, ByteLink* next): ByteLink*
     %push
-    %define b ebp+8
-    %define next ebp+12
+    ; ----- arguments -----
+    %define $b ebp+8
+    %define $next ebp+12
+    ; ----- locals -----
+    ; ByteLink* b_link
+    %define $b_link ebp-4
+    func_entry 4
 
+    ; eax = b_link = malloc(sizeof(ByteLink));
+    call_func [$b_link], malloc, sizeof_ByteLink
+    mov eax, dword [$b_link]
+
+    ; b_link->b = b;
+    mov bl, byte [$b]
+    mov byte [ByteLink_b(eax)], bl
+    
+    ; b_link->next = next;
+    mov ebx, dword [$next]
+    mov dword [ByteLink_next(eax)], ebx
+
+    func_exit [$b_link]
     %pop
 
 ByteLink_freeList: ; freeList(ByteLink *list): void
     %push
-    %define list ebp+8
+    ; ----- arguments -----
+    %define $list ebp+8
+    ; ----- locals -----
+    ; ByteLink* current;
+    ; ByteLink* next;
+    %define $current ebp-4
+    %define $next ebp-8
+    func_entry 8
 
+    ; current = list;
+    mov eax, dword [$list]
+    mov dword [$current], eax
+
+    ; while (current)
+    .traverse_list_loop:
+        ; if (current == NULL) { break; }
+        cmp dword [$current], NULL
+        je .traverse_list_loop_end
+
+        ; next = current->next;
+        mov eax, dword [$current]
+        mov eax, dword [ByteLink_next(eax)]
+        mov dword [$next], eax
+
+        ; free(current);
+        call_func eax, free, [$current]
+
+        ; current = next;
+        mov eax, dword [$next]
+        mov dword [$current], eax
+
+    .traverse_list_loop_end:
+
+    func_exit
     %pop
 
 ByteLink_addAtStart: ; addAtStart(ByteLink** list, byte b): void
     %push
-    %define list ebp+8
-    %define b ebp+12
+    ; ----- arguments -----
+    %define $list ebp+8
+    %define $b ebp+12
+    ; ----- locals -----
+    ; ByteLink* b_link
+    %define $b_link ebp-4
+    func_entry 4
 
+    ; *list = ByteLink(b, *list);
+
+    ; b_link = ByteLink(b, *list);
+    mov eax, dword [$list]
+    call_func [$b_link], ByteLink_ctor, [$b], [eax]
+
+    ; *list = b_link;
+    mov eax, dword [$list]
+    mov ebx, dword [$b_link]
+    mov dword [eax], ebx
+    
+    func_exit
     %pop
 
 ByteLink_padStartWithZeros: ; padStartWithZeros(ByteLink* list, int count): void
