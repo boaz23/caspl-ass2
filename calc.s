@@ -1,12 +1,12 @@
 DEFAULT_STACK_SIZE EQU 5
 MAX_LINE_LENGTH EQU 80
 
-; SIGNATURE: func_init(n)
+; SIGNATURE: func_entry(n)
 ;    n - locals size (in bytes)
 ; DESCRIPTION: Prepares the stack frame before executing the function
 
 ; esp -= n
-%macro func_init 1
+%macro func_entry 1
     push ebp
     mov ebp, esp
     sub esp, %1
@@ -14,10 +14,10 @@ MAX_LINE_LENGTH EQU 80
     pushad
 %endmacro
 
-; SIGNATURE: func_ret(p_ret_val = eax)
+; SIGNATURE: func_exit(p_ret_val = eax)
 ;   p_ret_val - A place to put function return value. default = eax
 ; DESCRIPTION: cleans stack frame before exiting the function (after function execution)
-%macro func_ret 0-1 eax
+%macro func_exit 0-1 eax
     popad
     popfd
     mov eax, %1
