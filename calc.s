@@ -188,7 +188,6 @@ BigIntegerStack_isFull: ; isFull(BigStackInteger* s): boolean
 ;     ctor(byte b, ByteLink* next): ByteLink*
 ;     freeList(ByteLink *list): void
 ;     addAtStart(ByteLink** list, byte b): void
-;     padStartWithZeros(ByteLink* list, int count): void
 ; }
 %endif
 
@@ -284,13 +283,6 @@ ByteLink_addAtStart: ; addAtStart(ByteLink** list, byte b): void
     func_exit
     %pop
 
-ByteLink_padStartWithZeros: ; padStartWithZeros(ByteLink* list, int count): void
-    %push
-    %define $list ebp+8
-    %define $count ebp+12
-
-    %pop
-
 ;------------------- class BigInteger -------------------
 %ifdef COMMENT
 ; class BigInteger {
@@ -309,6 +301,7 @@ ByteLink_padStartWithZeros: ; padStartWithZeros(ByteLink* list, int count): void
 ;     multiply(BigInteger* n1, BigInteger* n2): BigInteger*
 ;
 ;     removeLeadingZeroes(BigInteger* n): void
+;     shiftLeft(BigInteger* n, int amount): void
 ;     print(BigInteger* n): void
 ; }
 %endif
@@ -373,6 +366,13 @@ BigInteger_multiply: ; multiply(BigInteger* n1, BigInteger* n2): BigInteger*
 BigInteger_removeLeadingZeroes: ; removeLeadingZeroes(BigInteger* n): void
     %push
     %define $n ebp+8
+
+    %pop
+
+BigInteger_shiftLeft: ; shiftLeft(BigInteger* n, int amount): void
+    %push
+    %define $n ebp+8
+    %define $amount ebp+12
 
     %pop
 
