@@ -1,5 +1,10 @@
 NULL EQU 0
 
+TRUE EQU 1
+FALSE EQU 0
+
+STK_UNIT EQU 4
+
 DEFAULT_STACK_SIZE EQU 5
 MAX_LINE_LENGTH EQU 80
 
@@ -24,6 +29,7 @@ MAX_LINE_LENGTH EQU 80
     popfd
     mov eax, %1
     mov esp, ebp
+    pop ebp
     ret
 %endmacro
 
@@ -45,7 +51,7 @@ MAX_LINE_LENGTH EQU 80
     call %1
     %rotate -1
     mov %1, eax
-    add esp, (%0-2)*4
+    add esp, (%0-2)*STK_UNIT
 %endmacro
 
 ; SIGNATURE: printf_line(format_str, ... args)
@@ -64,13 +70,13 @@ MAX_LINE_LENGTH EQU 80
         %endrep
         push %%format
         call printf
-        add esp, (%0-1)*4
+        add esp, (%0-1)*STK_UNIT
 %endmacro
 
 section .rodata
 
 section .bss
-    NumberStack: resb 4
+    NumberStack: resb STK_UNIT
 
 section .data
     DebugMode: db 0
@@ -89,41 +95,45 @@ section .text
     extern fgets
 
     extern stdin
-    extern stdout
     extern stderr
 
-main:
+main: ; main(int argc, char *argv[], char *envp[]): int
     %push
-    %define $buf ebp-MAX_LINE_LENGTH
-    %define $r ebp-MAX_LINE_LENGTH-4
+    ; ----- arguments -----
+    %define $capacity ebp+8
+    ; ----- locals -----
+    ; int operations_count;
+    %define $operations_count ebp-4
+    ; ----- body ------
 
     mov ebp, esp
-    sub esp, MAX_LINE_LENGTH+4
-
-    lea ebx, [$buf]
-    func_call [$r], fgets, ebx, MAX_LINE_LENGTH, [stdin]
-    func_call eax, printf, [$r]
-    printf_line "%d", [$r]
-
-    ; push dword [stdin]
-    ; push dword MAX_LINE_LENGTH
-    ; push dword ebx
-    ; call fgets
-    ; mov [ebp-MAX_LINE_LENGTH-4], eax
-    ; add esp, 12
-
-    ; lea ebx, [ebp-MAX_LINE_LENGTH]
-    ; push dword ebx
-    ; call printf
-    ; add esp, 4
+    sub esp, 4
+    
+    func_call [$operations_count], myCalc
+    printf_line "%X", [$operations_count]
+    mov eax, [$operations_count]
 
     mov esp, ebp
 
-    mov     ebx,eax
-    mov     eax,1
+    mov     ebx, eax
+    mov     eax, 1
     int     0x80
     nop
+    %pop
 
+myCalc: ; myCalc(): int
+    %push
+    ; ----- arguments -----
+    %define $capacity ebp+8
+    ; ----- locals -----
+    ; int operations_count;
+    %define $operations_count ebp-4
+    ; ----- body ------
+    func_entry 4
+
+    mov dword [$operations_count], 0
+
+    func_exit [$operations_count]
     %pop
 
 ;------------------- class BigIntegerStack -------------------
@@ -432,23 +442,3 @@ BigInteger_print: ; print(BigInteger* n): void
     ; ----- body ------
 
     %pop
-
-;silly_swap: 
-;
-;    %push                       ; save the current context 
-;    %stacksize flat            ; tell NASM to use bp 
-;    %assign %$localsize 0       ; see text for explanation 
-;    %arg      i:word, j_ptr:word
-;    %local old_ax:word, old_dx:word 
-;
-;        enter   %$localsize,0   ; see text for explanation 
-;        mov     [old_ax],ax     ; swap ax & bx 
-;        mov     [old_dx],dx     ; and swap dx & cx 
-;        mov     ax,bx 
-;        mov     dx,cx 
-;        mov     bx,[old_ax] 
-;        mov     cx,[old_dx] 
-;        leave                   ; restore old bp 
-;        ret                     ; 
-;
-;    %pop                        ; restore original context
