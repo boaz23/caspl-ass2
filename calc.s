@@ -64,13 +64,49 @@ MAX_LINE_LENGTH EQU 80
     section	.rodata
         %%format: db %1, 10, 0
     section	.text
-        %rep %0-1
-            %rotate -1
-            push dword %1
-        %endrep
-        push %%format
-        call printf
-        add esp, (%0-1)*STK_UNIT
+        %if %0-1
+            func_call eax, printf, %%format, %{2:-1}
+        %else
+            func_call eax, printf, %%format
+        %endif
+%endmacro
+
+; SIGNATURE: mem_mov(r, m1, m2)
+; DESCRIPTION: m1 = r = m2
+; EXAMPLE: mem_mov ebx, [ebp-4], [ebp+8]
+;   This will copy the value at the memory address ebp+8 to ebp-4
+;   while using ebx as an intermediate place to store the result of [ebp+8]
+; NOTES:
+;   * This can be used to transfer from memory to memory
+;     while specifying the intermediate register used
+;     (but can also be used with any arbitrary combination of registers and memory)
+;   * If used for transfer for memory to memory,
+;     the register implicitly determines the operand's sizes
+;   * Operand sizes can also be specified explicitly
+%macro mem_mov 3
+    mov %1, %3
+    mov %2, %1
+%endmacro
+
+; SIGNATURE: mem_swap(r1, m1, r2, m2)
+; DESCRIPTION:
+;   Swaps the values in m1 and m2 using r1 and r2
+;   as intermediate places to store m1 and m2 respectively
+; EXAMPLE: mem_mov ebx, [ebp-4], [ebp+8]
+;   This will copy the value at the memory address ebp+8 to ebp-4
+;   while using ebx as an intermediate place to store the result of [ebp+8]
+; NOTES:
+;   * This can be used to swap the values in two memory locations
+;     while specifying the intermediate registers used
+;     (but can also be used with any arbitrary combination of registers and memory)
+;   * If used for swapping the values in two memory locations,
+;     the registers implicitly determines the operand's sizes
+;   * Operand sizes can also be specified explicitly
+%macro mem_swap 4
+    mov %1, %2
+    mov %3, %4
+    mov %2, %3
+    mov %4, %1
 %endmacro
 
 section .rodata
@@ -237,12 +273,10 @@ ByteLink_ctor: ; ctor(byte b, ByteLink* next): ByteLink*
     mov eax, dword [$b_link]
 
     ; b_link->b = b;
-    mov bl, byte [$b]
-    mov byte [ByteLink_b(eax)], bl
+    mem_mov bl, byte [ByteLink_b(eax)], byte [$b]
     
     ; b_link->next = next;
-    mov ebx, dword [$next]
-    mov dword [ByteLink_next(eax)], ebx
+    mem_mov ebx, [ByteLink_next(eax)], [$next]
 
     func_exit [$b_link]
     %pop
@@ -260,8 +294,7 @@ ByteLink_freeList: ; freeList(ByteLink *list): void
     func_entry 8
 
     ; current = list;
-    mov eax, dword [$list]
-    mov dword [$current], eax
+    mem_mov eax, [$current], [$list]
 
     ; while (current)
     .traverse_list_loop:
@@ -271,15 +304,13 @@ ByteLink_freeList: ; freeList(ByteLink *list): void
 
         ; next = current->next;
         mov eax, dword [$current]
-        mov eax, dword [ByteLink_next(eax)]
-        mov dword [$next], eax
+        mem_mov eax, [$next], [ByteLink_next(eax)]
 
         ; free(current);
         func_call eax, free, [$current]
 
         ; current = next;
-        mov eax, dword [$next]
-        mov dword [$current], eax
+        mem_mov eax, [$current], [$next]
         jmp .traverse_list_loop
     .traverse_list_loop_end:
 
@@ -296,7 +327,6 @@ ByteLink_addAtStart: ; addAtStart(ByteLink** list, byte b): void
     %define $b_link ebp-4
     ; ----- body ------
     func_entry 4
-
     ; *list = ByteLink(b, *list);
 
     ; b_link = ByteLink(b, *list);
@@ -305,8 +335,7 @@ ByteLink_addAtStart: ; addAtStart(ByteLink** list, byte b): void
 
     ; *list = b_link;
     mov eax, dword [$list]
-    mov ebx, dword [$b_link]
-    mov dword [eax], ebx
+    mem_mov ebx, [eax], [$b_link]
     
     func_exit
     %pop
