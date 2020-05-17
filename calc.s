@@ -100,10 +100,10 @@ main:
     mov ebp, esp
     sub esp, MAX_LINE_LENGTH+4
 
-    lea ebx, [buf]
-    func_call [r], fgets, ebx, MAX_LINE_LENGTH, [stdin]
-    func_call eax, printf, [r]
-    printf_line "%d", [r]
+    lea ebx, [$buf]
+    func_call [$r], fgets, ebx, MAX_LINE_LENGTH, [stdin]
+    func_call eax, printf, [$r]
+    printf_line "%d", [$r]
 
     ; push dword [stdin]
     ; push dword MAX_LINE_LENGTH
@@ -148,34 +148,49 @@ sizeof_BigIntegerStack EQU 12
 
 BigIntegerStack_ctor: ; ctor(int capacity): BigInteger*
     %push
+    ; ----- arguments -----
     %define $capacity ebp+8
+    ; ----- locals -----
+    ; ----- body ------
 
     %pop
 
 BigIntegerStack_push: ; push(BigStackInteger* s, BigInteger* n): void
     %push
+    ; ----- arguments -----
     %define $s ebp+8
     %define $n ebp+12
+    ; ----- locals -----
+    ; ----- body ------
 
     %pop
 
 BigIntegerStack_pop: ; pop(BigStackInteger* s): BigInteger*
     %push
+    ; ----- arguments -----
     %define $s ebp+8
+    ; ----- locals -----
+    ; ----- body ------
 
     %pop
 
 
 BigIntegerStack_hasAtLeastItems: ; hasAtLeastItems(BigStackInteger* s, int amount): boolean
     %push
+    ; ----- arguments -----
     %define $s ebp+8
     %define $amount ebp+12
+    ; ----- locals -----
+    ; ----- body ------
 
     %pop
     
 BigIntegerStack_isFull: ; isFull(BigStackInteger* s): boolean
     %push
+    ; ----- arguments -----
     %define $s ebp+8
+    ; ----- locals -----
+    ; ----- body ------
 
     %pop
 
@@ -204,6 +219,7 @@ ByteLink_ctor: ; ctor(byte b, ByteLink* next): ByteLink*
     ; ----- locals -----
     ; ByteLink* b_link
     %define $b_link ebp-4
+    ; ----- body ------
     func_entry 4
 
     ; eax = b_link = malloc(sizeof(ByteLink));
@@ -227,9 +243,10 @@ ByteLink_freeList: ; freeList(ByteLink *list): void
     %define $list ebp+8
     ; ----- locals -----
     ; ByteLink* current;
-    ; ByteLink* next;
     %define $current ebp-4
+    ; ByteLink* next;
     %define $next ebp-8
+    ; ----- body ------
     func_entry 8
 
     ; current = list;
@@ -253,7 +270,7 @@ ByteLink_freeList: ; freeList(ByteLink *list): void
         ; current = next;
         mov eax, dword [$next]
         mov dword [$current], eax
-
+        jmp .traverse_list_loop
     .traverse_list_loop_end:
 
     func_exit
@@ -267,6 +284,7 @@ ByteLink_addAtStart: ; addAtStart(ByteLink** list, byte b): void
     ; ----- locals -----
     ; ByteLink* b_link
     %define $b_link ebp-4
+    ; ----- body ------
     func_entry 4
 
     ; *list = ByteLink(b, *list);
@@ -312,81 +330,115 @@ sizeof_BigInteger EQU 8
 
 BigInteger_ctor: ; ctor(ByteLink* list, int hexDigitsLen): BigInteger*
     %push
+    ; ----- arguments -----
     %define $list ebp+8
     %define $hexDigitsLen ebp+12
+    ; ----- locals ------
+    ; ----- body ------
 
     %pop
 
 BigInteger_duplicate: ; duplicate(BigInteger* n): BigInteger*
     %push
+    ; ----- arguments -----
     %define $n ebp+8
+    ; ----- locals ------
+    ; ----- body ------
 
     %pop
 
 BigInteger_free: ; free(BigInteger* n): void
     %push
+    ; ----- arguments -----
     %define $n ebp+8
+    ; ----- locals ------
+    ; ----- body ------
 
     %pop
 
 BigInteger_getHexDigitsLen: ; getHexDigitsLen(BigInteger* n): BigInteger*
     %push
+    ; ----- arguments -----
     %define $n ebp+8
+    ; ----- locals ------
+    ; ----- body ------
 
     %pop
 
 BigInteger_add: ; add(BigInteger* n1, BigInteger* n2): BigInteger*
     %push
+    ; ----- arguments -----
     %define $n1 ebp+8
     %define $n2 ebp+12
+    ; ----- locals ------
+    ; ----- body ------
 
     %pop
 
 BigInteger_and: ; and(BigInteger* n1, BigInteger* n2): BigInteger*
     %push
+    ; ----- arguments -----
     %define $n1 ebp+8
     %define $n2 ebp+12
+    ; ----- locals ------
+    ; ----- body ------
 
     %pop
 
 BigInteger_or: ; or(BigInteger* n1, BigInteger* n2): BigInteger*
     %push
+    ; ----- arguments -----
     %define $n1 ebp+8
     %define $n2 ebp+12
+    ; ----- locals ------
+    ; ----- body ------
 
     %pop
 
 BigInteger_multiply: ; multiply(BigInteger* n1, BigInteger* n2): BigInteger*
     %push
+    ; ----- arguments -----
     %define $n1 ebp+8
     %define $n2 ebp+12
+    ; ----- locals ------
+    ; ----- body ------
 
     %pop
 
 BigInteger_removeLeadingZeroes: ; removeLeadingZeroes(BigInteger* n): void
     %push
+    ; ----- arguments -----
     %define $n ebp+8
+    ; ----- locals ------
+    ; ----- body ------
 
     %pop
 
 BigInteger_shiftLeft: ; shiftLeft(BigInteger* n, int amount): void
     %push
+    ; ----- arguments -----
     %define $n ebp+8
     %define $amount ebp+12
+    ; ----- locals ------
+    ; ----- body ------
 
     %pop
 
 BigInteger_print: ; print(BigInteger* n): void
     %push
+    ; ----- arguments -----
     %define $n ebp+8
+    ; ----- locals ------
+    ; ----- body ------
 
     %pop
 
 ;silly_swap: 
 ;
 ;    %push                       ; save the current context 
-;    %stacksize small            ; tell NASM to use bp 
+;    %stacksize flat            ; tell NASM to use bp 
 ;    %assign %$localsize 0       ; see text for explanation 
+;    %arg      i:word, j_ptr:word
 ;    %local old_ax:word, old_dx:word 
 ;
 ;        enter   %$localsize,0   ; see text for explanation 
