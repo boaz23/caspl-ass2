@@ -116,8 +116,7 @@ section .bss
 
 section .data
     DebugMode: db 0
-    ;TODO NumbersStackCapacity: DEFAULT_NUMBERS_STACK_SIZE create error
-    NumbersStackCapacity: EQU 5
+    NumbersStackCapacity: DEFAULT_NUMBERS_STACK_SIZE
 
 section .text
     align 16
@@ -411,10 +410,10 @@ BigInteger_ctor: ; ctor(ByteLink* list, int hexDigitsLen): BigInteger*
     mov eax, dword [$b_integer]
 
     ;b_integer->list = list
-    mem_mov ebx, [BigInteger_list(eax)], [$list]
+    mem_mov ebx, dword [BigInteger_list(eax)], dword [$list]
 
     ;b_integer->hexDigitsLen = hexDigitsLen
-    mem_mov ebx, [BigInteger_hexDigitsLength(eax)], [$hexDigitsLen]
+    mem_mov ebx, dword [BigInteger_hexDigitsLength(eax)], dword [$hexDigitsLen]
 
 
     func_exit [$b_integer]
