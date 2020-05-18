@@ -5,7 +5,7 @@ FALSE EQU 0
 
 STK_UNIT EQU 4
 
-DEFAULT_STACK_SIZE EQU 5
+DEFAULT_NUMBERS_STACK_SIZE EQU 5
 MAX_LINE_LENGTH EQU 80
 
 ; SIGNATURE: func_entry(n = 0)
@@ -116,6 +116,7 @@ section .bss
 
 section .data
     DebugMode: db 0
+    NumbersStackCapacity: DEFAULT_NUMBERS_STACK_SIZE
 
 section .text
     align 16
