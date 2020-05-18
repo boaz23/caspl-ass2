@@ -344,8 +344,23 @@ BigInteger_ctor: ; ctor(ByteLink* list, int hexDigitsLen): BigInteger*
     %define $list ebp+8
     %define $hexDigitsLen ebp+12
     ; ----- locals ------
+    %define $b_integer ebp-4
     ; ----- body ------
+    func_entry 4
 
+    ; eax = b_integer = malloc(sizeof(ByteLink));
+    func_call [$b_integer], malloc, sizeof_BigInteger
+    mov eax, dword [$b_integer]
+
+    ;b_integer->list = list
+    mov ebx, dword [$list]
+    mov dword [BigInteger_list(eax)], ebx
+
+    ;b_integer->hexDigitsLen = hexDigitsLen
+    mov ebx, dword [$hexDigitsLen]
+    mov dword [BigInteger_hexDigitsLength(eax)], ebx
+
+    func_exit [$b_link]
     %pop
 
 BigInteger_duplicate: ; duplicate(BigInteger* n): BigInteger*
@@ -353,8 +368,11 @@ BigInteger_duplicate: ; duplicate(BigInteger* n): BigInteger*
     ; ----- arguments -----
     %define $n ebp+8
     ; ----- locals ------
+    %define $b_integer ebp-4
+    %define $hexDigitsLength ebp-8
     ; ----- body ------
-
+    func_entry 8
+    ;TODO
     %pop
 
 BigInteger_free: ; free(BigInteger* n): void
@@ -363,6 +381,13 @@ BigInteger_free: ; free(BigInteger* n): void
     %define $n ebp+8
     ; ----- locals ------
     ; ----- body ------
+    
+    ; ByteLink_freeList(n->list)
+    mov ebx, dword [$n]
+    func_call, eax, ByteLink_freeList, BigInteger_list(ebx)
+
+    ; free(n)
+    func_call eax, free, [$n]
 
     %pop
 
@@ -372,6 +397,8 @@ BigInteger_getHexDigitsLen: ; getHexDigitsLen(BigInteger* n): BigInteger*
     %define $n ebp+8
     ; ----- locals ------
     ; ----- body ------
+    mov eax, dword [$n]
+    mov eax, [BigInteger_hexDigitsLength(eax)]
 
     %pop
 
