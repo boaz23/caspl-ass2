@@ -173,17 +173,17 @@ myCalc: ; myCalc(): int
 
 ;------------------- class BigIntegerStack -------------------
 %ifdef COMMENT
-; class BigIntegerStack {
-;     BigInteger[] numbers;
-;     int capacity;
-;     int sp;
-; 
-;     ctor(int capacity): BigIntegerStack*
-;     push(BigStackInteger* s, BigInteger* n): void
-;     pop(BigStackInteger* s): BigInteger*
-;     hasAtLeastItems(BigStackInteger* s, int amount): boolean
-;     isFull(BigStackInteger* s): boolean
-; }
+;class BigIntegerStack {
+;    BigInteger[] numbers;
+;    int capacity;
+;    int sp;
+;
+;    ctor(int capacity): BigIntegerStack*
+;    push(BigStackInteger* s, BigInteger* n): void
+;    pop(BigStackInteger* s): BigInteger*
+;    hasAtLeastItems(BigStackInteger* s, int amount): boolean
+;    isFull(BigStackInteger* s): boolean
+;}
 %endif
 
 sizeof_BigIntegerStack EQU 12
@@ -241,14 +241,16 @@ BigIntegerStack_isFull: ; isFull(BigStackInteger* s): boolean
 
 ;------------------- class ByteLink -------------------
 %ifdef COMMENT
-; class ByteLink {
-;     byte b;
-;     ByteLink* next;
-; 
-;     ctor(byte b, ByteLink* next): ByteLink*
-;     freeList(ByteLink *list): void
-;     addAtStart(ByteLink** list, byte b): void
-; }
+;class ByteLink {
+;    byte b;
+;    ByteLink* next;
+;    
+;    ctor(byte b, ByteLink* next): ByteLink*
+;    freeList(ByteLink *list): void
+;    duplicate(ByteLink *list): ByteLink*
+;    addAtStart(ByteLink** list, byte b): void
+;    chainAdd(ByteLink *link, byte b): ByteLink*
+;}
 %endif
 
 ; NOTE: byte cannot be passed on the stack, we pass a DWORD (4 bytes) instead
@@ -316,6 +318,15 @@ ByteLink_freeList: ; freeList(ByteLink *list): void
     func_exit
     %pop
 
+ByteLink_duplicate: ; duplicate(ByteLink *list): ByteLink*
+    %push
+    ; ----- arguments -----
+    %define $list ebp+8
+    ; ----- locals -----
+    ; ----- body ------
+
+    %pop
+
 ByteLink_addAtStart: ; addAtStart(ByteLink** list, byte b): void
     %push
     ; ----- arguments -----
@@ -339,27 +350,37 @@ ByteLink_addAtStart: ; addAtStart(ByteLink** list, byte b): void
     func_exit
     %pop
 
+ByteLink_chainAdd: ; chainAdd(ByteLink *link, byte b): ByteLink*
+    %push
+    ; ----- arguments -----
+    %define $link ebp+8
+    %define $b ebp+12
+    ; ----- locals -----
+    ; ----- body ------
+
+    %pop
+
 ;------------------- class BigInteger -------------------
 %ifdef COMMENT
-; class BigInteger {
-;     ByteLink* list;
-;     int hexDigitsLength;
-; 
-;     ctor(ByteLink* list, int hexDigitsLen): BigInteger*
-;     duplicate(BigInteger* n): BigInteger*
-;     free(BigInteger* n): void
-; 
-;     getHexDigitsLen(BigInteger* n): BigInteger*
-;     
-;     add(BigInteger* n1, BigInteger* n2): BigInteger*
-;     and(BigInteger* n1, BigInteger* n2): BigInteger*
-;     or(BigInteger* n1, BigInteger* n2): BigInteger*
-;     multiply(BigInteger* n1, BigInteger* n2): BigInteger*
+;class BigInteger {
+;    ByteLink* list;
+;    int hexDigitsLength;
 ;
-;     removeLeadingZeroes(BigInteger* n): void
-;     shiftLeft(BigInteger* n, int amount): void
-;     print(BigInteger* n): void
-; }
+;    ctor(ByteLink* list, int hexDigitsLen): BigInteger*
+;    duplicate(BigInteger* n): BigInteger*
+;    free(BigInteger* n): void
+;
+;    getHexDigitsLen(BigInteger* n): BigInteger*
+;    
+;    add(BigInteger* n1, BigInteger* n2): BigInteger*
+;    and(BigInteger* n1, BigInteger* n2): BigInteger*
+;    or(BigInteger* n1, BigInteger* n2): BigInteger*
+;    multiply(BigInteger* n1, BigInteger* n2): BigInteger*
+;
+;    removeLeadingZeroes(BigInteger* n): void
+;    shiftLeft(BigInteger* n, int amount): void
+;    print(BigInteger* n): void
+;}
 %endif
 
 sizeof_BigInteger EQU 8
