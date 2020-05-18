@@ -584,7 +584,12 @@ BigInteger_print: ; print(BigInteger* n): void
 
     .set_str_end:
 
-    func_exit
+    func_call [rs], reverse_hex_string, [$str], [$strSize]
+
+    ;TODO remove zero at start i.e 12 0A -> 0A12
+    ;TODO if we print here, we need to free the str after
+    ; func_call [rs], free, [$str]
+    func_exit [$str]
     %pop
 
 
@@ -631,6 +636,40 @@ insertByteAsHexToStringR: ;insertByteAsHexToStringR(char *str, byte b)
         mov eax, dword [$str]
         mov dword [eax], ebx
 
+    func_exit
+    %pop
+
+reverse_hex_string: ;reverse_hex_string(char *str, int len)
+    %push
+    ; ----- arguments -----
+    %define $str ebp+8
+    %define $len ebp+12
+    ; ----- locals ------
+    ; ----- body ------
+    func_entry
+
+	mov ebx, 0 ; i = 0
+	; k = hex_len - 1
+	mov eax, [$len]
+	dec eax
+	reverse_hex_string_loop: ; while (i < k)
+		; condition check
+		; if (eax < ebx) break;
+		cmp eax, ebx
+		jl reverse_hex_string_loop_end
+
+		; body
+		; swap(&str[i], &str[k])
+		mov byte dl, [$str + ebx]
+		mov byte cl, [$str + eax]
+		mov byte [$str + ebx], cl
+		mov byte [$str + eax], dl
+
+		; loop increment
+		inc ebx
+		dec eax
+		jmp reverse_hex_string_loop
+	reverse_hex_string_loop_end:
     func_exit
     %pop
 
