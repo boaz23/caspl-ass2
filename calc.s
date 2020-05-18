@@ -137,7 +137,6 @@ section .text
 main: ; main(int argc, char *argv[], char *envp[]): int
     %push
     ; ----- arguments -----
-    %define $capacity ebp+8
     ; ----- locals -----
     ; int operations_count;
     %define $operations_count ebp-4
@@ -161,7 +160,6 @@ main: ; main(int argc, char *argv[], char *envp[]): int
 myCalc: ; myCalc(): int
     %push
     ; ----- arguments -----
-    %define $capacity ebp+8
     ; ----- locals -----
     ; int operations_count;
     %define $operations_count ebp-4
@@ -383,13 +381,16 @@ BigInteger_ctor: ; ctor(ByteLink* list, int hexDigitsLen): BigInteger*
     mov eax, dword [$b_integer]
 
     ;b_integer->list = list
+    ; TODO: consider using the mem_mov macro. see example in ByteLink_ctor
     mov ebx, dword [$list]
     mov dword [BigInteger_list(eax)], ebx
 
     ;b_integer->hexDigitsLen = hexDigitsLen
+    ; TODO: consider using the mem_mov macro. see example in ByteLink_ctor
     mov ebx, dword [$hexDigitsLen]
     mov dword [BigInteger_hexDigitsLength(eax)], ebx
 
+    ; TODO: probable bug, $b_link does not exists here. did you mean '$b_integer'?
     func_exit [$b_link]
     %pop
 
@@ -403,6 +404,7 @@ BigInteger_duplicate: ; duplicate(BigInteger* n): BigInteger*
     ; ----- body ------
     func_entry 8
     ;TODO
+    ;TODO: make a function frame on the stack
     %pop
 
 BigInteger_free: ; free(BigInteger* n): void
@@ -412,8 +414,11 @@ BigInteger_free: ; free(BigInteger* n): void
     ; ----- locals ------
     ; ----- body ------
     
+    ;TODO: make a function frame on the stack
     ; ByteLink_freeList(n->list)
     mov ebx, dword [$n]
+    ; TODO: probable bug, maybe dereference ebx (likely want to wrap it in square brackets)
+    ;   (i.e. [BigInteger_list(ebx)])
     func_call, eax, ByteLink_freeList, BigInteger_list(ebx)
 
     ; free(n)
@@ -427,6 +432,8 @@ BigInteger_getHexDigitsLen: ; getHexDigitsLen(BigInteger* n): BigInteger*
     %define $n ebp+8
     ; ----- locals ------
     ; ----- body ------
+    
+    ;TODO: make a function frame on the stack
     mov eax, dword [$n]
     mov eax, [BigInteger_hexDigitsLength(eax)]
 
@@ -497,5 +504,5 @@ BigInteger_print: ; print(BigInteger* n): void
     %define $n ebp+8
     ; ----- locals ------
     ; ----- body ------
-
+    ; TODO: please implement as soon as possible
     %pop
