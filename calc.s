@@ -321,8 +321,9 @@ ByteLink_addAtStart: ; addAtStart(ByteLink** list, byte b): void
 ;     duplicate(BigInteger* n): BigInteger*
 ;     free(BigInteger* n): void
 ; 
-;     getHexDigitsLen(BigInteger* n): BigInteger*
-;     
+;     getHexDigitsLen(BigInteger* n): int
+;     getByte(BigInteger* n): byte
+;
 ;     add(BigInteger* n1, BigInteger* n2): BigInteger*
 ;     and(BigInteger* n1, BigInteger* n2): BigInteger*
 ;     or(BigInteger* n1, BigInteger* n2): BigInteger*
@@ -373,6 +374,8 @@ BigInteger_duplicate: ; duplicate(BigInteger* n): BigInteger*
     ; ----- body ------
     func_entry 8
     ;TODO
+
+    func_exit
     %pop
 
 BigInteger_free: ; free(BigInteger* n): void
@@ -381,25 +384,31 @@ BigInteger_free: ; free(BigInteger* n): void
     %define $n ebp+8
     ; ----- locals ------
     ; ----- body ------
+    func_entry
     
     ; ByteLink_freeList(n->list)
-    mov ebx, dword [$n]
-    func_call, eax, ByteLink_freeList, BigInteger_list(ebx)
+    mov eax, dword [$n]
+    mov ebx, [BigInteger_list(eax)]
+    func_call eax, ByteLink_freeList, ebx
 
     ; free(n)
     func_call eax, free, [$n]
 
+    func_exit
     %pop
 
-BigInteger_getHexDigitsLen: ; getHexDigitsLen(BigInteger* n): BigInteger*
+BigInteger_getHexDigitsLen: ; getHexDigitsLen(BigInteger* n): int
     %push
     ; ----- arguments -----
     %define $n ebp+8
     ; ----- locals ------
     ; ----- body ------
+    func_entry
+
     mov eax, dword [$n]
     mov eax, [BigInteger_hexDigitsLength(eax)]
 
+    func_exit
     %pop
 
 BigInteger_add: ; add(BigInteger* n1, BigInteger* n2): BigInteger*
@@ -466,6 +475,112 @@ BigInteger_print: ; print(BigInteger* n): void
     ; ----- arguments -----
     %define $n ebp+8
     ; ----- locals ------
+    %define $str ebp-4
+    %define $strSize ebp-8
+    %define $hex_len ebp-12
+    %define $index ebp-16
+    %define $tmpBigInt ebp-20
+    %define $rs ebp-24
     ; ----- body ------
+    func_entry 20
 
+    ; strSize = BigInteger_getHexDigitsLen(n)*2
+    ; str = calloc(strSize ,1)
+    func_call [$hex_len], BigInteger_getHexDigitsLen, [$n]
+    mov eax, 1
+    mov ebx, dword [$hex_len]
+    shl ebx, 1
+    mov dword [$strSize], ebx
+    func_call [$str], calloc, [$strSize], eax
+
+    ; tmpBigInt = n
+    mov eax, [$n]
+    mov [$tmpBigInt], eax
+
+    ;while(ecx < strSize) write in str the hex in the link
+    mov dword [$index], 0
+    .set_str_start:
+        func_call eax, getByte, [$tmpBigInt]
+        mov bx, ax
+        and bx, 0x0F
+        mov ecx, dword [$index]
+        add ecx, dword [$str]
+        func_call [$rs], insertByteAsHexToStringR, ecx ,ebx
+
+        mov bx, ax
+        and bx, 0xF0
+        shr bx, 4
+        add ecx, 1
+        func_call [$rs], insertByteAsHexToStringR, ecx, ebx
+
+        ; tmpBigInt = tmpBigInt->next
+        mov eax, dword [$tmpBigInt]
+        mov ebx, dword [ByteLink_next(eax)]
+        mov dword [$tmpBigInt], ebx
+
+        ; index = index + 1
+        add dword [$index], 2
+
+        ; if(index < strSize) jmp to set_str_start
+        mov ecx, dword [$index]
+        mov ebx, dword [$strSize]
+        cmp ecx, ebx
+        jl .set_str_start
+
+    .set_str_end:
+
+    func_exit
     %pop
+
+
+getByte: ; getByte(BigInteger* n): byte
+    %push
+    ; ----- arguments -----
+    %define $n ebp+8
+    ; ----- locals ------
+    ; ----- body ------
+    func_entry
+
+    ; ebx = n->list
+    mov eax, dword [$n]
+    mov ebx, dword [BigInteger_list(eax)]
+
+    ; ebx = ebx->b = n->list->b
+    mov ah, byte [ByteLink_b(ebx)]
+
+    func_exit
+    %pop
+
+insertByteAsHexToStringR: ;insertByteAsHexToStringR(char *str, byte b)
+    %push
+    ; ----- arguments -----
+    %define $n ebp+8
+    %define $b ebp+12
+    ; ----- locals ------
+    ; ----- body ------
+    func_entry
+
+    mov eax, 10
+    mov ebx, dword [$b]
+    cmp ax, bx
+    jge .letter
+    .digit:
+        add ebx, 48
+        jmp .str_set_byte
+    .letter:
+        sub ebx, 10
+        add ebx, 65
+
+    .str_set_byte:
+        ; str[0] = ebx
+        mov eax, dword [$str]
+        mov dword [eax], ebx
+
+    func_exit
+    %pop
+
+;malloc size of hex digits * 2
+;for each byteadd to end, add l hex to uper and u hex to l for example 1A 0001 1010 to A1 
+;r string
+;print
+;1A BC -> A1 CB -> BC 1A
