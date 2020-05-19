@@ -610,30 +610,29 @@ getByte: ; getByte(BigInteger* n): byte
     func_exit
     %pop
 
-insertByteAsHexToStringR: ;insertByteAsHexToStringR(char *str, byte b)
+insertByteAsHexToStringR: ;insertByteAsHexToStringR(char *str, int b)
     %push
     ; ----- arguments -----
-    %define $n ebp+8
+    %define $str ebp+8
     %define $b ebp+12
     ; ----- locals ------
     ; ----- body ------
     func_entry
-
+    
     mov eax, 10
     mov ebx, dword [$b]
-    cmp ax, bx
-    jge .letter
+    cmp eax, ebx
+    jle .letter
     .digit:
-        add ebx, 48
+        add bl, 48
         jmp .str_set_byte
     .letter:
-        sub ebx, 10
-        add ebx, 65
-
+        sub bl, 10
+        add bl, 65
     .str_set_byte:
         ; str[0] = ebx
         mov eax, dword [$str]
-        mov dword [eax], ebx
+        mov byte [eax], bl
 
     func_exit
     %pop

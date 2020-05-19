@@ -8,6 +8,7 @@ STK_UNIT EQU 4
 DEFAULT_NUMBERS_STACK_SIZE EQU 5
 MAX_LINE_LENGTH EQU 80
 
+
 ; SIGNATURE: func_entry(n = 0)
 ;    n - locals size (in bytes). default is 0
 ; DESCRIPTION: Prepares the stack frame before executing the function
@@ -116,11 +117,15 @@ section .bss
 
 section .data
     DebugMode: db 0
-    NumbersStackCapacity: DEFAULT_NUMBERS_STACK_SIZE
+    ;TODO NumbersStackCapacity: DEFAULT_NUMBERS_STACK_SIZE create error
+    NumbersStackCapacity: EQU 5
 
 section .text
     align 16
-    global main
+    global main_1
+
+    global insertByteAsHexToStringR
+
     extern printf
     extern fprintf
     extern fflush
@@ -134,7 +139,7 @@ section .text
     extern stdin
     extern stderr
 
-main: ; main(int argc, char *argv[], char *envp[]): int
+main_1: ; main(int argc, char *argv[], char *envp[]): int
     %push
     ; ----- arguments -----
     ; ----- locals -----
@@ -410,10 +415,10 @@ BigInteger_ctor: ; ctor(ByteLink* list, int hexDigitsLen): BigInteger*
     mov eax, dword [$b_integer]
 
     ;b_integer->list = list
-    mem_mov ebx, dword [BigInteger_list(eax)], dword [$list]
+    mem_mov ebx, [BigInteger_list(eax)], [$list]
 
     ;b_integer->hexDigitsLen = hexDigitsLen
-    mem_mov ebx, dword [BigInteger_hexDigitsLength(eax)], dword [$hexDigitsLen]
+    mem_mov ebx, [BigInteger_hexDigitsLength(eax)], [$hexDigitsLen]
 
 
     func_exit [$b_integer]
@@ -583,7 +588,12 @@ BigInteger_print: ; print(BigInteger* n): void
 
     .set_str_end:
 
-    func_exit
+    func_call [$rs], reverse_hex_string, [$str], [$strSize]
+
+    ;TODO remove zero at start i.e 12 0A -> 0A12
+    ;TODO if we print here, we need to free the str after
+    ; func_call [rs], free, [$str]
+    func_exit [$str]
     %pop
 
 
@@ -608,28 +618,61 @@ getByte: ; getByte(BigInteger* n): byte
 insertByteAsHexToStringR: ;insertByteAsHexToStringR(char *str, byte b)
     %push
     ; ----- arguments -----
-    %define $n ebp+8
+    %define $str ebp+8
     %define $b ebp+12
     ; ----- locals ------
     ; ----- body ------
     func_entry
-
+    
     mov eax, 10
     mov ebx, dword [$b]
-    cmp ax, bx
-    jge .letter
+    cmp eax, ebx
+    jle .letter
     .digit:
-        add ebx, 48
+        add bl, 48
         jmp .str_set_byte
     .letter:
-        sub ebx, 10
-        add ebx, 65
-
+        sub bl, 10
+        add bl, 65
     .str_set_byte:
         ; str[0] = ebx
         mov eax, dword [$str]
-        mov dword [eax], ebx
+        mov byte [eax], bl
 
+    func_exit
+    %pop
+
+reverse_hex_string: ;reverse_hex_string(char *str, int len)
+    %push
+    ; ----- arguments -----
+    %define $str ebp+8
+    %define $len ebp+12
+    ; ----- locals ------
+    ; ----- body ------
+    func_entry
+
+	mov ebx, 0 ; i = 0
+	; k = hex_len - 1
+	mov eax, [$len]
+	dec eax
+	reverse_hex_string_loop: ; while (i < k)
+		; condition check
+		; if (eax < ebx) break;
+		cmp eax, ebx
+		jl reverse_hex_string_loop_end
+
+		; body
+		; swap(&str[i], &str[k])
+		mov byte dl, [$str + ebx]
+		mov byte cl, [$str + eax]
+		mov byte [$str + ebx], cl
+		mov byte [$str + eax], dl
+
+		; loop increment
+		inc ebx
+		dec eax
+		jmp reverse_hex_string_loop
+	reverse_hex_string_loop_end:
     func_exit
     %pop
 
