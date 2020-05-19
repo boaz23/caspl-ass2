@@ -116,8 +116,7 @@ section .bss
 
 section .data
     DebugMode: db 0
-    ;TODO NumbersStackCapacity: DEFAULT_NUMBERS_STACK_SIZE create error
-    NumbersStackCapacity: EQU 5
+    NumbersStackCapacity: db DEFAULT_NUMBERS_STACK_SIZE
 
 section .text
     align 16
@@ -584,7 +583,7 @@ BigInteger_print: ; print(BigInteger* n): void
 
     .set_str_end:
 
-    func_call [rs], reverse_hex_string, [$str], [$strSize]
+    func_call [$rs], reverse_hex_string, [$str], [$strSize]
 
     ;TODO remove zero at start i.e 12 0A -> 0A12
     ;TODO if we print here, we need to free the str after
