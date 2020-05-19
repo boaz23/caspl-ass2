@@ -116,8 +116,7 @@ section .bss
 
 section .data
     DebugMode: db 0
-    ;TODO NumbersStackCapacity: DEFAULT_NUMBERS_STACK_SIZE create error
-    NumbersStackCapacity: EQU 5
+    NumbersStackCapacity: db DEFAULT_NUMBERS_STACK_SIZE
 
 section .text
     align 16
