@@ -643,26 +643,45 @@ reverse_hex_string: ;reverse_hex_string(char *str, int len)
     %define $str ebp+8
     %define $len ebp+12
     ; ----- locals ------
+    %define $index ebp-4
+    %define $saveR ebp-8
     ; ----- body ------
-    func_entry
+    func_entry 8
+
+    mov edx, 0
+    mov ecx, 0
 
 	mov ebx, 0 ; i = 0
 	; k = hex_len - 1
-	mov eax, [$len]
+	mov eax, dword [$len]
 	dec eax
 	reverse_hex_string_loop: ; while (i < k)
 		; condition check
 		; if (eax < ebx) break;
+        mov [$index], eax
 		cmp eax, ebx
 		jl reverse_hex_string_loop_end
-
 		; body
 		; swap(&str[i], &str[k])
-		mov byte dl, [$str + ebx]
-		mov byte cl, [$str + eax]
-		mov byte [$str + ebx], cl
-		mov byte [$str + eax], dl
+        
+        mov edx, dword [$str]
+        mov byte dl,[edx + ebx]
+        mov ecx, dword [$str]
+        mov byte cl, [ecx + eax]
 
+        mov eax, dword [$str]
+        add eax, ebx
+        mov byte [eax], cl
+
+        mov eax, [$index]
+        mov [$saveR], ebx
+        mov ebx, dword [$str]
+        add ebx, eax
+        mov byte [ebx], dl
+        mov ebx, [$saveR]
+
+        ;;restore eax
+        mov eax, [$index]
 		; loop increment
 		inc ebx
 		dec eax
