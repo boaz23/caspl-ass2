@@ -126,7 +126,11 @@ section .text
 
     global insertByteAsHexToStringR
     global reverse_hex_string
+
     global ByteLink_ctor
+    global ByteLink_addAtStart
+    global ByteLink_freeList
+
     extern printf
     extern fprintf
     extern fflush

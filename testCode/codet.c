@@ -6,9 +6,11 @@
 typedef struct ByteLink{
     char b;
     struct ByteLink* next;
-} ByteLink;
+} __attribute__((packed, aligned(1))) ByteLink;
 
 extern ByteLink* ByteLink_ctor(char b, ByteLink* next);
+extern void ByteLink_addAtStart(ByteLink** link, char b);
+extern void ByteLink_freeList(ByteLink* list);
 
 void test_ByteLink_ctor(){
     char c = 65; //A
@@ -21,6 +23,37 @@ void test_ByteLink_ctor(){
     if(bl->b != c){
         printf("test_ByteLink_ctor expect byte %c recive %c\n",c, bl->b);
     }
+
+    ByteLink_freeList(bl);
+}
+
+/* Assume ByteLink_ctor works */
+extern void test_ByteLink_addAtStart(){
+    char c1 = 0x0A, c2 = 0XC9;
+    ByteLink* blist = ByteLink_ctor(c1, NULL);
+    if(blist == NULL){
+        printf("ByteLink_addAtStart error at malloc\n");
+        return;
+    }
+    ByteLink_addAtStart(&blist, c2);
+
+    if(blist != NULL){
+        if(blist->b != c2){
+            printf("ByteLink_addAtStart expect byte %c recive %c\n",c2, blist->b);
+        } else {
+            if(blist->next != NULL){
+                if(blist->next->b != c1){
+                    printf("ByteLink_addAtStart expect byte %c recive %c\n",c1, blist->next->b);
+                }
+            } else {
+                printf("ByteLink_addAtStart expect blist->next not to be null\n");
+            }
+        }
+    } else {
+        printf("ByteLink_addAtStart expect blist not to be null\n");
+    }
+
+    ByteLink_freeList(blist);
 }
 
 /* BigInterger */
@@ -72,6 +105,7 @@ void test_reverse_hex_string(){
 
 int main(int argc, char **argv){
     test_ByteLink_ctor();
+    test_ByteLink_addAtStart();
 
     test_insertByteAsHexToStringR();
     test_reverse_hex_string();
