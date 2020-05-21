@@ -10,7 +10,7 @@ typedef struct ByteLink{
 
 extern ByteLink* ByteLink_ctor(char b, ByteLink* next);
 extern void ByteLink_addAtStart(ByteLink** link, char b);
-extern void ByteLink_freeList(ByteLink* list);
+extern char * ByteLink_freeList(ByteLink* list);
 
 void test_ByteLink_ctor(){
     char c = 65; //A
@@ -57,8 +57,17 @@ extern void test_ByteLink_addAtStart(){
 }
 
 /* BigInterger */
+typedef struct BigInteger{
+    struct ByteLink* list;
+    int hexDigits;
+} BigInteger;
+
+extern BigInteger* BigInteger_ctor(ByteLink *link, int LenHexDigits);
+extern void BigInteger_free(BigInteger *link);
+
 extern void insertByteAsHexToStringR(char *str, int b);
 extern void reverse_hex_string(char *str, int len);
+extern char *BigInteger_print(BigInteger *link);
 
 void test_insertByteAsHexToStringR(){
     char *str = (char *)malloc(2);
@@ -77,6 +86,7 @@ void test_insertByteAsHexToStringR(){
     if(str[0] != ('A')){
         printf("test_insertByteAsHexToStringR at c=0x0A");
     }
+
     free(str);
 }
 
@@ -100,6 +110,30 @@ void test_reverse_hex_string(){
     free(str);
 }
 
+void test_BigInteger_print(){
+    BigInteger* bigInt;
+    char *str;
+    char c1 = 0x12, c2 = 0XC9, c3 = 0x0A;
+    ByteLink* blist = ByteLink_ctor(c1, NULL);
+    ByteLink_addAtStart(&blist,c3);
+    ByteLink_addAtStart(&blist,c2);
+    ByteLink_addAtStart(&blist,c1);
+    bigInt = BigInteger_ctor(blist, 3);
+
+    str = BigInteger_print(bigInt);
+    if(str == NULL){
+        printf("test_BigInteger_print expect char * not null\n");
+        return;
+    }
+
+    if(strcmp("AC912", str) != 0){
+        printf("test_BigInteger_print execpt AC912 recive: %s\n", str);
+    }
+    free(str);
+    BigInteger_free(bigInt);
+    
+}
+
 /* ByteLink */
 
 
@@ -109,5 +143,6 @@ int main(int argc, char **argv){
 
     test_insertByteAsHexToStringR();
     test_reverse_hex_string();
+    test_BigInteger_print();
     return 0;
 }
