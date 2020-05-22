@@ -140,7 +140,7 @@ void test_insertByteAsHexToStringR(){
 }
 
 void test_BigInteger_add(){
-    BigInteger *n1, *n2, *add;
+    /*BigInteger *n1, *n2, *add;
     ByteLink* n1list, *n2list; 
     char n1c1 = 0x12, n1c2 = 0XC9;
     char n2c1 = 0x00;
@@ -182,7 +182,7 @@ void test_BigInteger_add(){
     free(n1); free(n2);
     if(add != NULL){
         free(add);
-    }
+    }*/
 }
 
 void test_BigInteger_getlistLen(){
