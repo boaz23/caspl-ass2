@@ -113,6 +113,7 @@ extern void BigInteger_free(BigInteger *link);
 extern BigInteger* BigInteger_duplicate(BigInteger *link);
 
 extern int BigInteger_getlistLen(BigInteger *bigInteger);
+extern BigInteger* BigInteger_add(BigInteger *n1, BigInteger *n2);
 extern void insertByteAsHexToStringR(char *str, int b);
 extern void reverse_hex_string(char *str, int len);
 extern char *BigInteger_print(BigInteger *link);
@@ -138,6 +139,52 @@ void test_insertByteAsHexToStringR(){
     free(str);
 }
 
+void test_BigInteger_add(){
+    BigInteger *n1, *n2, *add;
+    ByteLink* n1list, *n2list; 
+    char n1c1 = 0x12, n1c2 = 0XC9;
+    char n2c1 = 0x00;
+
+    n1list = ByteLink_ctor(n1c2, NULL);
+    ByteLink_addAtStart(&n1list, n1c1);
+    n1 = BigInteger_ctor(n1list, 4);
+
+
+    n2list = ByteLink_ctor(n2c1, NULL);
+    n2 = BigInteger_ctor(n2list, 2);
+
+    add = BigInteger_add(n1, n2);
+
+    if(add != NULL){
+        if(add->hexDigits == 4){
+            if(add->list != NULL){
+                if(add->list->b != n1c1){
+                    printf("test_BigInteger_add expect add->list->b: %c recive %c\n", n1c1, add->list->b);
+                } else {
+                    if(add->list->next != NULL){
+                        if(add->list->next->b != n1c2){
+                            printf("test_BigInteger_add expect add->list->b: %c recive %c\n", n2c1, add->list->next->b);   
+                        }
+                    } else {
+                        printf("test_BigInteger_add senond link is null\n");  
+                    }
+                }
+            } else {
+                printf("test_BigInteger_add first link is null\n"); 
+            }
+        } else {
+            printf("test_BigInteger_add hex digits len expect %d recive %d\n", 4, add->hexDigits); 
+        }
+    } else {
+        printf("test_BigInteger_add return null BigInteger\n"); 
+    }
+
+    free(n1); free(n2);
+    if(add != NULL){
+        free(add);
+    }
+}
+
 void test_BigInteger_getlistLen(){
     BigInteger* bigInt;
     int len = -1;
@@ -157,6 +204,7 @@ void test_BigInteger_getlistLen(){
     BigInteger_free(bigInt);
     
 }
+
 
 void test_BigInteger_duplicate(){
     BigInteger* bigInt, *dup;
@@ -242,6 +290,7 @@ int main(int argc, char **argv){
     test_ByteLink_duplicate();
 
     test_BigInteger_getlistLen();
+    test_BigInteger_add();
     test_insertByteAsHexToStringR();
     test_BigInteger_duplicate();
     test_reverse_hex_string();
