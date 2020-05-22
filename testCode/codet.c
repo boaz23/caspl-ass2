@@ -13,6 +13,8 @@ extern void ByteLink_addAtStart(ByteLink** link, char b);
 extern char * ByteLink_freeList(ByteLink* list);
 extern ByteLink* ByteLink_duplicate(ByteLink* list);
 
+void test_same_Bytelink(ByteLink *current, ByteLink *dupCurrent, char *funcName);
+
 void test_ByteLink_ctor(){
     char c = 65; //A
     ByteLink* bl = ByteLink_ctor(c, NULL);
@@ -60,23 +62,30 @@ extern void test_ByteLink_addAtStart(){
 void test_ByteLink_duplicate(){
     char c1 = 65, c2 = 99; //A, c
     ByteLink* bl = ByteLink_ctor(c1, NULL);
-    ByteLink* current, *dup, *dupCurrent;
+    ByteLink* dup;
     int bloop = 0;
 
-    current = bl;
     ByteLink_addAtStart(&bl, c2);
 
     dup = ByteLink_duplicate(bl);
-    dupCurrent = dup;
+
+    test_same_Bytelink(bl, dup, "test_ByteLink_duplicate");
+
+    ByteLink_freeList(bl);
+    ByteLink_freeList(dup);
+}
+
+void test_same_Bytelink(ByteLink *current, ByteLink *dupCurrent, char *funcName){
+    int bloop = 0;
     while(current->next != NULL){
         if(dupCurrent == NULL){
-            printf("test_ByteLink_duplicate the dup is shorter from the original\n");
+            printf("%s the dup is shorter from the original\n", funcName);
             bloop = 1;
             break;
         }
 
         if(current->b != dupCurrent->b){
-            printf("test_ByteLink_duplicate expect dup->c: %c reseve %c\n", current->b, dupCurrent->b);
+            printf("%s expect dup->c: %c reseve %c\n", funcName, current->b, dupCurrent->b);
             bloop = 1;
             break;
         }
@@ -88,12 +97,9 @@ void test_ByteLink_duplicate(){
 
     if(bloop == 0){
         if(dupCurrent->next != NULL){
-            printf("test_ByteLink_duplicate the dup list is longer from the original, its f\n");
+            printf("%s the dup list is longer from the original, its f\n", funcName);
         }
     }
-
-    ByteLink_freeList(bl);
-    ByteLink_freeList(dup);
 }
 
 /* BigInterger */
@@ -104,12 +110,12 @@ typedef struct BigInteger{
 
 extern BigInteger* BigInteger_ctor(ByteLink *link, int LenHexDigits);
 extern void BigInteger_free(BigInteger *link);
+extern BigInteger* BigInteger_duplicate(BigInteger *link);
 
 extern int BigInteger_getlistLen(BigInteger *bigInteger);
 extern void insertByteAsHexToStringR(char *str, int b);
 extern void reverse_hex_string(char *str, int len);
 extern char *BigInteger_print(BigInteger *link);
-
 
 void test_insertByteAsHexToStringR(){
     char *str = (char *)malloc(2);
@@ -149,6 +155,35 @@ void test_BigInteger_getlistLen(){
     }
 
     BigInteger_free(bigInt);
+    
+}
+
+void test_BigInteger_duplicate(){
+    BigInteger* bigInt, *dup;
+    int len = -1;
+    char c1 = 0x12, c2 = 0XC9, c3 = 0x0A;
+    ByteLink* blist = ByteLink_ctor(c1, NULL);
+    ByteLink_addAtStart(&blist,c3);
+    ByteLink_addAtStart(&blist,c2);
+    ByteLink_addAtStart(&blist,c1);
+    bigInt = BigInteger_ctor(blist, 5);
+
+
+    dup = BigInteger_duplicate(bigInt);
+
+    if(dup != NULL){
+        test_same_Bytelink(blist, dup->list, "test_BigInteger_duplicate");
+
+        if(dup->hexDigits != bigInt->hexDigits){
+            printf("test_BigInteger_duplicate expect hex len %d recive %d\n", bigInt->hexDigits, dup->hexDigits);
+        }
+
+    } else {
+        printf("test_BigInteger_duplicate return null %d\n", len);
+    }
+
+    BigInteger_free(bigInt);
+    BigInteger_free(dup);
     
 }
 
@@ -204,9 +239,11 @@ void test_BigInteger_print(){
 int main(int argc, char **argv){
     test_ByteLink_ctor();
     test_ByteLink_addAtStart();
+    test_ByteLink_duplicate();
 
     test_BigInteger_getlistLen();
     test_insertByteAsHexToStringR();
+    test_BigInteger_duplicate();
     test_reverse_hex_string();
     test_BigInteger_print();
     return 0;

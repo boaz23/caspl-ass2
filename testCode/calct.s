@@ -126,6 +126,7 @@ section .text
 
     global BigInteger_ctor
     global BigInteger_free
+    global BigInteger_duplicate
     global BigInteger_getlistLen
     global insertByteAsHexToStringR
     global reverse_hex_string
@@ -341,9 +342,9 @@ ByteLink_duplicate: ; duplicate(ByteLink *list): ByteLink*
     %define $duplist ebp-4
     %define $current ebp-8
     %define $next ebp-12
-    %define $duplistCurrent ebp-4
+    %define $duplistCurrent ebp-16
     ; ----- body ------
-    func_entry 12
+    func_entry 16
 
     mov eax, 0
     mov ebx, [$list]
@@ -487,11 +488,26 @@ BigInteger_duplicate: ; duplicate(BigInteger* n): BigInteger*
     ; ----- locals ------
     %define $b_integer ebp-4
     %define $hexDigitsLength ebp-8
+    %define $duplist ebp-12
     ; ----- body ------
-    func_entry 8
-    ;TODO
+    func_entry 12
+    
+    ;eax =  n->list
+    mov eax, [$n]
+    mov eax, [BigInteger_list(eax)]
 
-    func_exit
+    ;duplist = ByteLink_duplicate(n->list)
+    func_call [$duplist], ByteLink_duplicate, eax
+    
+    ;hexDigitsLength = n->hexDigitsLength
+    mov eax, [$n]
+    mem_mov ebx, [$hexDigitsLength], [BigInteger_hexDigitsLength(eax)]
+    
+    ;b_integer = BigInteger_ctor(duplist, hexDigitsLength)
+    func_call [$b_integer], BigInteger_ctor, [$duplist], [$hexDigitsLength]
+
+
+    func_exit [$b_integer]
     %pop
 
 BigInteger_free: ; free(BigInteger* n): void
