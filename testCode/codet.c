@@ -11,6 +11,7 @@ typedef struct ByteLink{
 extern ByteLink* ByteLink_ctor(char b, ByteLink* next);
 extern void ByteLink_addAtStart(ByteLink** link, char b);
 extern char * ByteLink_freeList(ByteLink* list);
+extern ByteLink* ByteLink_duplicate(ByteLink* list);
 
 void test_ByteLink_ctor(){
     char c = 65; //A
@@ -54,6 +55,45 @@ extern void test_ByteLink_addAtStart(){
     }
 
     ByteLink_freeList(blist);
+}
+
+void test_ByteLink_duplicate(){
+    char c1 = 65, c2 = 99; //A, c
+    ByteLink* bl = ByteLink_ctor(c1, NULL);
+    ByteLink* current, *dup, *dupCurrent;
+    int bloop = 0;
+
+    current = bl;
+    ByteLink_addAtStart(&bl, c2);
+
+    dup = ByteLink_duplicate(bl);
+    dupCurrent = dup;
+    while(current->next != NULL){
+        if(dupCurrent == NULL){
+            printf("test_ByteLink_duplicate the dup is shorter from the original\n");
+            bloop = 1;
+            break;
+        }
+
+        if(current->b != dupCurrent->b){
+            printf("test_ByteLink_duplicate expect dup->c: %c reseve %c\n", current->b, dupCurrent->b);
+            bloop = 1;
+            break;
+        }
+
+        current = current->next;
+        dupCurrent = dupCurrent->next;
+
+    }
+
+    if(bloop == 0){
+        if(dupCurrent->next != NULL){
+            printf("test_ByteLink_duplicate the dup list is longer from the original, its f\n");
+        }
+    }
+
+    ByteLink_freeList(bl);
+    ByteLink_freeList(dup);
 }
 
 /* BigInterger */

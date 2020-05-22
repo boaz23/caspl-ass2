@@ -323,8 +323,54 @@ ByteLink_duplicate: ; duplicate(ByteLink *list): ByteLink*
     ; ----- arguments -----
     %define $list ebp+8
     ; ----- locals -----
+    %define $duplist ebp-4
+    %define $current ebp-8
+    %define $next ebp-12
+    %define $duplistCurrent ebp-4
     ; ----- body ------
+    func_entry 12
 
+    mov eax, 0
+    mov ebx, [$list]
+    mov al, byte [ByteLink_b(ebx)] 
+
+    ; dupist = ByteLink_ctor(list->b, NULL)
+    func_call [$duplist], ByteLink_ctor, eax, NULL
+
+    ; duplistCurrent = duplist
+    mem_mov ecx, [$duplistCurrent], [$duplist]
+
+    ; current = list-> next
+    mem_mov ecx, [$current], [$list]
+    mov eax, dword [$current]
+    mem_mov eax, [$current], [ByteLink_next(eax)]
+
+    .dup_loop_start:
+        ;if(current == NULL) jmp to dup_loop_end
+        cmp dword [$current], NULL
+        je .dup_loop_end
+
+        ; next = ByteLink_ctor(current->b, NULL)
+        mov eax, 0
+        mov ebx, [$current]
+        mov al, byte [ByteLink_b(ebx)]
+        func_call [$next], ByteLink_ctor, eax, NULL
+
+        ;duplistCurrent->next = next
+        mov ebx, [$duplistCurrent]
+        mem_mov ecx, [ByteLink_next(ebx)], [$next]
+
+        ;duplistCurrent = next
+        mem_mov ecx, [$duplistCurrent], [$next]
+
+        ;current = current->next
+        mov ebx, dword [$current]
+        mem_mov ecx, [$current], [ByteLink_next(ebx)]
+
+        jmp .dup_loop_start
+    .dup_loop_end:
+
+    func_exit [$duplist]
     %pop
 
 ByteLink_addAtStart: ; addAtStart(ByteLink** list, byte b): void
@@ -371,14 +417,20 @@ ByteLink_chainAdd: ; chainAdd(ByteLink *link, byte b): ByteLink*
 ;     free(BigInteger* n): void
 ; 
 ;     getHexDigitsLen(BigInteger* n): int
-;     BigInteger_getlistLen(BigInteger* n): int
 ;     getByte(BigInteger* n): byte
 ;
 ;     add(BigInteger* n1, BigInteger* n2): BigInteger*
 ;     and(BigInteger* n1, BigInteger* n2): BigInteger*
 ;     or(BigInteger* n1, BigInteger* n2): BigInteger*
 ;     multiply(BigInteger* n1, BigInteger* n2): BigInteger*
-
+;
+;    getHexDigitsLen(BigInteger* n): BigInteger*
+;    
+;    add(BigInteger* n1, BigInteger* n2): BigInteger*
+;    and(BigInteger* n1, BigInteger* n2): BigInteger*
+;    or(BigInteger* n1, BigInteger* n2): BigInteger*
+;    multiply(BigInteger* n1, BigInteger* n2): BigInteger*
+;
 ;    removeLeadingZeroes(BigInteger* n): void
 ;    shiftLeft(BigInteger* n, int amount): void
 ;    print(BigInteger* n): void
