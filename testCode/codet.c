@@ -65,9 +65,11 @@ typedef struct BigInteger{
 extern BigInteger* BigInteger_ctor(ByteLink *link, int LenHexDigits);
 extern void BigInteger_free(BigInteger *link);
 
+extern int BigInteger_getlistLen(BigInteger *bigInteger);
 extern void insertByteAsHexToStringR(char *str, int b);
 extern void reverse_hex_string(char *str, int len);
 extern char *BigInteger_print(BigInteger *link);
+
 
 void test_insertByteAsHexToStringR(){
     char *str = (char *)malloc(2);
@@ -88,6 +90,26 @@ void test_insertByteAsHexToStringR(){
     }
 
     free(str);
+}
+
+void test_BigInteger_getlistLen(){
+    BigInteger* bigInt;
+    int len = -1;
+    char c1 = 0x12, c2 = 0XC9, c3 = 0x0A;
+    ByteLink* blist = ByteLink_ctor(c1, NULL);
+    ByteLink_addAtStart(&blist,c3);
+    ByteLink_addAtStart(&blist,c2);
+    ByteLink_addAtStart(&blist,c1);
+    bigInt = BigInteger_ctor(blist, 5);
+
+    len = BigInteger_getlistLen(bigInt);
+    if(len != 3){
+        printf("test_BigInteger_getlistLen expect len 3 recive %d\n", len);
+        return;
+    }
+
+    BigInteger_free(bigInt);
+    
 }
 
 void test_reverse_hex_string(){
@@ -118,7 +140,7 @@ void test_BigInteger_print(){
     ByteLink_addAtStart(&blist,c3);
     ByteLink_addAtStart(&blist,c2);
     ByteLink_addAtStart(&blist,c1);
-    bigInt = BigInteger_ctor(blist, 3);
+    bigInt = BigInteger_ctor(blist, 5);
 
     str = BigInteger_print(bigInt);
     if(str == NULL){
@@ -134,6 +156,8 @@ void test_BigInteger_print(){
     
 }
 
+
+
 /* ByteLink */
 
 
@@ -141,6 +165,7 @@ int main(int argc, char **argv){
     test_ByteLink_ctor();
     test_ByteLink_addAtStart();
 
+    test_BigInteger_getlistLen();
     test_insertByteAsHexToStringR();
     test_reverse_hex_string();
     test_BigInteger_print();

@@ -126,6 +126,7 @@ section .text
 
     global BigInteger_ctor
     global BigInteger_free
+    global BigInteger_getlistLen
     global insertByteAsHexToStringR
     global reverse_hex_string
     global BigInteger_print
@@ -481,6 +482,33 @@ BigInteger_getHexDigitsLen: ; getHexDigitsLen(BigInteger* n): int
     func_exit [$len]
     %pop
 
+BigInteger_getlistLen: ; getHexDigitsLen(BigInteger* n): int
+    %push
+    ; ----- arguments -----
+    %define $n ebp+8
+    ; ----- locals ------
+    %define $len ebp-4
+    ; ----- body ------
+    func_entry 4
+
+    mov ebx, dword [$n]
+    mov eax, [BigInteger_hexDigitsLength(ebx)]
+
+    ; if eax is even ret eax else ret eax + 1
+    ; eax = eax /2 = BigInteger_hexDigitsLength / 2
+    mov edx, 0
+    mov ecx, 2
+    div ecx
+
+    cmp edx, 0
+    je .ret_eax
+        add eax, 1
+    .ret_eax:
+    mov dword [$len], eax
+
+    func_exit [$len]
+    %pop
+
 BigInteger_add: ; add(BigInteger* n1, BigInteger* n2): BigInteger*
     %push
     ; ----- arguments -----
@@ -554,9 +582,9 @@ BigInteger_print: ; print(BigInteger* n): char *
     ; ----- body ------
     func_entry 24
 
-    ; strSize = BigInteger_getHexDigitsLen(n)*2 + 1
+    ; strSize = BigInteger_getHexDigitsLen(n) + 1
     ; str = calloc(strSize ,1)
-    func_call [$hex_len], BigInteger_getHexDigitsLen, [$n]
+    func_call [$hex_len], BigInteger_getlistLen, [$n]
     mov ebx, dword [$hex_len]
     shl ebx, 1
     mov dword [$strSize], ebx
