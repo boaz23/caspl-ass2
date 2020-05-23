@@ -132,7 +132,7 @@ section .text
     global BigInteger_removeLeadingZeroes
     global insertByteAsHexToStringR
     global reverse_hex_string
-    global BigInteger_print
+    global BigInteger_toString
 
     global ByteLink_ctor
     global ByteLink_addAtStart
@@ -480,24 +480,18 @@ ByteLink_setPrevLinkNull: ; setPrevLinkNull(ByteLink* list, ByteLink* link): int
 
 ;------------------- class BigInteger -------------------
 %ifdef COMMENT
-; class BigInteger {
-;     ByteLink* list;
-;     int hexDigitsLength;
-; 
-;     ctor(ByteLink* list, int hexDigitsLen): BigInteger*
-;     duplicate(BigInteger* n): BigInteger*
-;     free(BigInteger* n): void
-; 
-;     getHexDigitsLen(BigInteger* n): int
-;     getByte(BigInteger* n): byte
+;class BigInteger {
+;    ByteLink* list;
+;    int list_len;
 ;
-;     add(BigInteger* n1, BigInteger* n2): BigInteger*
-;     and(BigInteger* n1, BigInteger* n2): BigInteger*
-;     or(BigInteger* n1, BigInteger* n2): BigInteger*
-;     multiply(BigInteger* n1, BigInteger* n2): BigInteger*
+;    ctor(ByteLink* list, int list_len): BigInteger*
+;    duplicate(BigInteger* n): BigInteger*
+;    free(BigInteger* n): void
 ;
-;    getHexDigitsLen(BigInteger* n): BigInteger*
-;    
+;    parse(char *s): BigInterger*
+;    calcHexDigitsInteger(BigInteger* n): BigInteger*
+;    getByte(BigInteger* n): byte*
+;   
 ;    add(BigInteger* n1, BigInteger* n2): BigInteger*
 ;    and(BigInteger* n1, BigInteger* n2): BigInteger*
 ;    or(BigInteger* n1, BigInteger* n2): BigInteger*
@@ -505,19 +499,19 @@ ByteLink_setPrevLinkNull: ; setPrevLinkNull(ByteLink* list, ByteLink* link): int
 ;
 ;    removeLeadingZeroes(BigInteger* n): void
 ;    shiftLeft(BigInteger* n, int amount): void
-;    print(BigInteger* n): void
-;}
+;    toString(BigInteger* n): char*
+;}}
 %endif
 
 sizeof_BigInteger EQU 8
 %define BigInteger_list(n) n+0
-%define BigInteger_hexDigitsLength(n) n+4
+%define BigInteger_list_len(n) n+4
 
-BigInteger_ctor: ; ctor(ByteLink* list, int hexDigitsLen): BigInteger*
+BigInteger_ctor: ; ctor(ByteLink* list, int list_len): BigInteger*
     %push
     ; ----- arguments -----
     %define $list ebp+8
-    %define $hexDigitsLen ebp+12
+    %define $list_len ebp+12
     ; ----- locals ------
     %define $b_integer ebp-4
     ; ----- body ------
@@ -530,8 +524,8 @@ BigInteger_ctor: ; ctor(ByteLink* list, int hexDigitsLen): BigInteger*
     ;b_integer->list = list
     mem_mov ebx, [BigInteger_list(eax)], [$list]
 
-    ;b_integer->hexDigitsLen = hexDigitsLen
-    mem_mov ebx, [BigInteger_hexDigitsLength(eax)], [$hexDigitsLen]
+    ;b_integer->list_len = list_len
+    mem_mov ebx, [BigInteger_list_len(eax)], [$list_len]
 
 
     func_exit [$b_integer]
@@ -543,7 +537,7 @@ BigInteger_duplicate: ; duplicate(BigInteger* n): BigInteger*
     %define $n ebp+8
     ; ----- locals ------
     %define $b_integer ebp-4
-    %define $hexDigitsLength ebp-8
+    %define $list_len ebp-8
     %define $duplist ebp-12
     ; ----- body ------
     func_entry 12
@@ -555,12 +549,12 @@ BigInteger_duplicate: ; duplicate(BigInteger* n): BigInteger*
     ;duplist = ByteLink_duplicate(n->list)
     func_call [$duplist], ByteLink_duplicate, eax
     
-    ;hexDigitsLength = n->hexDigitsLength
+    ;list_len = n->list_len
     mov eax, [$n]
-    mem_mov ebx, [$hexDigitsLength], [BigInteger_hexDigitsLength(eax)]
+    mem_mov ebx, [$list_len], [BigInteger_list_len(eax)]
     
-    ;b_integer = BigInteger_ctor(duplist, hexDigitsLength)
-    func_call [$b_integer], BigInteger_ctor, [$duplist], [$hexDigitsLength]
+    ;b_integer = BigInteger_ctor(duplist, list_len)
+    func_call [$b_integer], BigInteger_ctor, [$duplist], [$list_len]
 
 
     func_exit [$b_integer]
@@ -585,22 +579,6 @@ BigInteger_free: ; free(BigInteger* n): void
     func_exit
     %pop
 
-BigInteger_getHexDigitsLen: ; getHexDigitsLen(BigInteger* n): int
-    %push
-    ; ----- arguments -----
-    %define $n ebp+8
-    ; ----- locals ------
-    %define $len ebp-4
-    ; ----- body ------
-    func_entry 4
-
-    mov ebx, dword [$n]
-    mov eax, [BigInteger_hexDigitsLength(ebx)]
-    mov dword [$len], eax
-
-    func_exit [$len]
-    %pop
-
 BigInteger_getlistLen: ; getHexDigitsLen(BigInteger* n): int
     %push
     ; ----- arguments -----
@@ -611,18 +589,7 @@ BigInteger_getlistLen: ; getHexDigitsLen(BigInteger* n): int
     func_entry 4
 
     mov ebx, dword [$n]
-    mov eax, [BigInteger_hexDigitsLength(ebx)]
-
-    ; if eax is even ret eax else ret eax + 1
-    ; eax = eax /2 = BigInteger_hexDigitsLength / 2
-    mov edx, 0
-    mov ecx, 2
-    div ecx
-
-    cmp edx, 0
-    je .ret_eax
-        add eax, 1
-    .ret_eax:
+    mov eax, [BigInteger_list_len(ebx)]
     mov dword [$len], eax
 
     func_exit [$len]
@@ -649,10 +616,10 @@ BigInteger_add: ; add(BigInteger* n1, BigInteger* n2): BigInteger*
 
     ;set currentShorter and currentLonger
     mov eax, [$n1]
-    mov eax, dword [BigInteger_hexDigitsLength(eax)]
+    mov eax, dword [BigInteger_list_len(eax)]
 
     mov ebx, [$n2]
-    mov ebx, dword [BigInteger_hexDigitsLength(ebx)]
+    mov ebx, dword [BigInteger_list_len(ebx)]
 
     cmp eax, ebx
     jl .set_n2_as_longer
@@ -856,24 +823,24 @@ BigInteger_shiftLeft: ; shiftLeft(BigInteger* n, int amount): void
 
     %pop
 
-BigInteger_print: ; print(BigInteger* n): char *
+BigInteger_toString: ; toString(BigInteger* n): char*
     %push
     ; ----- arguments -----
     %define $n ebp+8
     ; ----- locals ------
     %define $str ebp-4
     %define $strSize ebp-8
-    %define $hex_len ebp-12
+    %define $list_len ebp-12
     %define $index ebp-16
     %define $tmpBigInt ebp-20
     %define $rs ebp-24
     ; ----- body ------
     func_entry 24
 
-    ; strSize = BigInteger_getHexDigitsLen(n) + 1
+    ; strSize = BigInteger_getHexDigitsLen(n)*2 + 1
     ; str = calloc(strSize ,1)
-    func_call [$hex_len], BigInteger_getlistLen, [$n]
-    mov ebx, dword [$hex_len]
+    func_call [$list_len], BigInteger_getlistLen, [$n]
+    mov ebx, dword [$list_len]
     shl ebx, 1
     mov dword [$strSize], ebx
     add ebx, 1
@@ -884,15 +851,15 @@ BigInteger_print: ; print(BigInteger* n): char *
     mov ebx, dword [$n]
     mov eax, [ebx]
     mov dword [$tmpBigInt], eax
-;
+
     ;while(index < strSize) write in str the hex in the link
     mov dword [$index], 0
     .set_str_start:
        
         mov ebx, dword [$tmpBigInt]
-    ;    ; ebx = ebx->b = n->list->b
+        ; ebx = ebx->b = n->list->b
         mov al, byte [ByteLink_b(ebx)]
-;
+
         ;00001111
         mov ebx, 0
         mov bl, al
@@ -903,7 +870,7 @@ BigInteger_print: ; print(BigInteger* n): char *
         ; index = index + 1
         add dword [$index], 1
         mov ecx, dword [$index]
-;
+
         mov ebx, 0
         mov bl, al
         and bl, 0xF0
@@ -911,7 +878,7 @@ BigInteger_print: ; print(BigInteger* n): char *
         mov ecx, dword [$index]
         add ecx, dword [$str]
         func_call [$rs], insertByteAsHexToStringR, ecx ,ebx
-;
+
         ; index = index + 1
         add dword [$index], 1
         ; tmpBigInt = tmpBigInt->list->next
@@ -922,9 +889,9 @@ BigInteger_print: ; print(BigInteger* n): char *
         mov ebx, dword [$strSize]
         cmp ecx, ebx
         jl .set_str_start
-;
+
     .set_str_end:
-;
+
     ;if(str[strSize] == '0') set it to null byte
     mov ebx, [$str]
     add ebx, [$strSize]

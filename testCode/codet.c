@@ -116,7 +116,7 @@ extern int BigInteger_getlistLen(BigInteger *bigInteger);
 extern BigInteger* BigInteger_add(BigInteger *n1, BigInteger *n2);
 extern void insertByteAsHexToStringR(char *str, int b);
 extern void reverse_hex_string(char *str, int len);
-extern char *BigInteger_print(BigInteger *link);
+extern char *BigInteger_toString(BigInteger *link);
 
 void test_insertByteAsHexToStringR(){
     char *str = (char *)malloc(2);
@@ -193,7 +193,7 @@ void test_BigInteger_getlistLen(){
     ByteLink_addAtStart(&blist,c3);
     ByteLink_addAtStart(&blist,c2);
     ByteLink_addAtStart(&blist,c1);
-    bigInt = BigInteger_ctor(blist, 5);
+    bigInt = BigInteger_ctor(blist, 3);
 
     len = BigInteger_getlistLen(bigInt);
     if(len != 3){
@@ -255,7 +255,7 @@ void test_reverse_hex_string(){
     free(str);
 }
 
-void test_BigInteger_print(){
+void test_BigInteger_toString(){
     BigInteger* bigInt;
     char *str;
     char c1 = 0x12, c2 = 0XC9, c3 = 0x0A;
@@ -263,9 +263,9 @@ void test_BigInteger_print(){
     ByteLink_addAtStart(&blist,c3);
     ByteLink_addAtStart(&blist,c2);
     ByteLink_addAtStart(&blist,c1);
-    bigInt = BigInteger_ctor(blist, 5);
+    bigInt = BigInteger_ctor(blist, 3);
 
-    str = BigInteger_print(bigInt);
+    str = BigInteger_toString(bigInt);
     if(str == NULL){
         printf("test_BigInteger_print expect char * not null\n");
         return;
@@ -285,15 +285,15 @@ void test_BigInteger_print(){
 
 
 int main(int argc, char **argv){
-    test_ByteLink_ctor();
-    test_ByteLink_addAtStart();
-    test_ByteLink_duplicate();
+    //test_ByteLink_ctor();
+    //test_ByteLink_addAtStart();
+    //test_ByteLink_duplicate();
 
-    test_BigInteger_getlistLen();
-    test_BigInteger_add();
-    test_insertByteAsHexToStringR();
-    test_BigInteger_duplicate();
-    test_reverse_hex_string();
-    test_BigInteger_print();
+    //test_BigInteger_getlistLen();
+    //test_BigInteger_add();
+    //test_insertByteAsHexToStringR();
+    //test_BigInteger_duplicate();
+    //test_reverse_hex_string();
+    test_BigInteger_toString();
     return 0;
 }
