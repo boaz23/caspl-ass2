@@ -303,6 +303,7 @@ myCalc: ; myCalc(): int
             
         .inp_parse_number:
             printf_line "Parse number"
+            func_call eax, parse_push_big_integer
             jmp .inp_loop_continue
 
         .inp_loop_continue:
@@ -394,9 +395,9 @@ add_two_top_of_stack: ; add_two_top_of_stack(): void
     %push
     ; ----- arguments -----
     ; ----- locals -----
-    %define n1 ebp-4
-    %define n2 ebp-8
-    %define n_res ebp-12
+    %define $n1 ebp-4
+    %define $n2 ebp-8
+    %define $n_res ebp-12
     ; ----- body ------
     func_entry 12
 
@@ -426,9 +427,9 @@ and_two_top_of_stack: ; and_two_top_of_stack(): void
     %push
     ; ----- arguments -----
     ; ----- locals -----
-    %define n1 ebp-4
-    %define n2 ebp-8
-    %define n_res ebp-12
+    %define $n1 ebp-4
+    %define $n2 ebp-8
+    %define $n_res ebp-12
     ; ----- body ------
     func_entry 12
 
@@ -458,9 +459,9 @@ or_two_top_of_stack: ; or_two_top_of_stack(): void
     %push
     ; ----- arguments -----
     ; ----- locals -----
-    %define n1 ebp-4
-    %define n2 ebp-8
-    %define n_res ebp-12
+    %define $n1 ebp-4
+    %define $n2 ebp-8
+    %define $n_res ebp-12
     ; ----- body ------
     func_entry 12
 
@@ -483,6 +484,49 @@ or_two_top_of_stack: ; or_two_top_of_stack(): void
     jmp .exit
 
     .exit:
+    func_exit
+    %pop
+
+parse_push_big_integer: ; parse_push_big_integer(char *s): void
+    %push
+    ; ----- arguments -----
+    %define $s ebp+8
+    ; ----- locals -----
+    %define $n ebp-4
+    ; ----- body ------
+    func_entry 4
+
+    .check_can_push:
+    can_push_number [NumbersStack], .parse, .exit
+
+    .parse:
+    ; n = parse_big_integer(s);
+    func_call [$n], parse_big_integer, [$s]
+
+    ; if (n) goto push_num;
+    cmp dword [$n], NULL
+    jne .push_num
+    printf_line "The input is not a hex number"
+    jmp .exit
+
+    .push_num:
+    ; push(NumbersStack, n);
+    func_call eax, BigIntegerStack_push, [NumbersStack], [$n]
+    jmp .exit
+
+    .exit:
+    func_exit
+    %pop
+
+
+parse_big_integer: ; parse_big_integer(char *s): BigInteger*
+    %push
+    ; ----- arguments -----
+    %define $s ebp+8
+    ; ----- locals -----
+    ; ----- body ------
+    func_entry
+
     func_exit
     %pop
 
