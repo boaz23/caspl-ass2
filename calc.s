@@ -516,8 +516,8 @@ parse_push_big_integer: ; parse_push_big_integer(char *s): void
     can_push_number [NumbersStack], .parse, .exit
 
     .parse:
-    ; n = parse_big_integer(s);
-    func_call [$n], parse_big_integer, [$s]
+    ; n = BigInteger.parse(s);
+    func_call [$n], BigInteger_parse, [$s]
 
     ; if (n) goto push_num;
     cmp dword [$n], NULL
@@ -534,17 +534,6 @@ parse_push_big_integer: ; parse_push_big_integer(char *s): void
     func_exit
     %pop
 
-parse_big_integer: ; parse_big_integer(char *s): BigInteger*
-    %push
-    ; ----- arguments -----
-    %define $s ebp+8
-    ; ----- locals -----
-    ; ----- body ------
-    func_entry
-
-    func_exit
-    %pop
-
 print_big_integer: ; print_big_integer(BigInteger* n): void
     %push
     ; ----- arguments -----
@@ -555,7 +544,7 @@ print_big_integer: ; print_big_integer(BigInteger* n): void
     func_entry 4
 
     ; s = print(n);
-    func_call [$s], BigInteger_print, [$n]
+    func_call [$s], BigInteger_toString, [$n]
     ; printf("%s\n", s);
     printf_line "%s", [$s]
     ; free(s);
