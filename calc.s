@@ -1025,25 +1025,6 @@ ByteLink_addAsNext: ; addAsNext(ByteLink *link, byte b): ByteLink*
 %ifdef COMMENT
 ;class BigInteger {
 ;    ByteLink* list;
-<<<<<<< HEAD
-;    int hexDigitsLength;
-;
-;    ctor(ByteLink* list, int hexDigitsLen): BigInteger*
-;    duplicate(BigInteger* n): BigInteger*
-;    free(BigInteger* n): void
-;
-;    getHexDigitsLen(BigInteger* n): int
-;    getByte(BigInteger* n): byte*
-;   
-;   add(BigInteger* n1, BigInteger* n2): BigInteger*
-;   and(BigInteger* n1, BigInteger* n2): BigInteger*
-;   or(BigInteger* n1, BigInteger* n2): BigInteger*
-;   multiply(BigInteger* n1, BigInteger* n2): BigInteger*
-;
-;   removeLeadingZeroes(BigInteger* n): void
-;   shiftLeft(BigInteger* n, int amount): void
-;   print(BigInteger* n): char*
-=======
 ;    int list_len;
 ;
 ;    ctor(ByteLink* list, int list_len): BigInteger*
@@ -1062,7 +1043,6 @@ ByteLink_addAsNext: ; addAsNext(ByteLink *link, byte b): ByteLink*
 ;    removeLeadingZeroes(BigInteger* n): void
 ;    shiftLeft(BigInteger* n, int amount): void
 ;    toString(BigInteger* n): char*
->>>>>>> master
 ;}
 %endif
 
@@ -1293,15 +1273,15 @@ BigInteger_toString: ; toString(BigInteger* n): char*
     mov ebx, dword [$n]
     mov eax, [ebx]
     mov dword [$tmpBigInt], eax
-;
+
     ;while(index < strSize) write in str the hex in the link
     mov dword [$index], 0
     .set_str_start:
        
         mov ebx, dword [$tmpBigInt]
-    ;    ; ebx = ebx->b = n->list->b
+        ; ebx = ebx->b = n->list->b
         mov al, byte [ByteLink_b(ebx)]
-;
+
         ;00001111
         mov ebx, 0
         mov bl, al
@@ -1312,7 +1292,7 @@ BigInteger_toString: ; toString(BigInteger* n): char*
         ; index = index + 1
         add dword [$index], 1
         mov ecx, dword [$index]
-;
+
         mov ebx, 0
         mov bl, al
         and bl, 0xF0
@@ -1320,7 +1300,7 @@ BigInteger_toString: ; toString(BigInteger* n): char*
         mov ecx, dword [$index]
         add ecx, dword [$str]
         func_call [$rs], insertByteAsHexToStringR, ecx ,ebx
-;
+
         ; index = index + 1
         add dword [$index], 1
         ; tmpBigInt = tmpBigInt->list->next
@@ -1331,9 +1311,9 @@ BigInteger_toString: ; toString(BigInteger* n): char*
         mov ebx, dword [$strSize]
         cmp ecx, ebx
         jl .set_str_start
-;
+
     .set_str_end:
-;
+
     ;if(str[strSize] == '0') set it to null byte
     mov ebx, [$str]
     add ebx, [$strSize]
