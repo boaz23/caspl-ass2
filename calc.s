@@ -1021,9 +1021,11 @@ ByteLink_addAsNext: ; addAsNext(ByteLink *link, byte b): ByteLink*
     %pop
 
 ;------------------- class BigInteger -------------------
+; TODO: maintain list_len instead of the amount of hex digits
 %ifdef COMMENT
 ;class BigInteger {
 ;    ByteLink* list;
+<<<<<<< HEAD
 ;    int hexDigitsLength;
 ;
 ;    ctor(ByteLink* list, int hexDigitsLen): BigInteger*
@@ -1041,18 +1043,38 @@ ByteLink_addAsNext: ; addAsNext(ByteLink *link, byte b): ByteLink*
 ;   removeLeadingZeroes(BigInteger* n): void
 ;   shiftLeft(BigInteger* n, int amount): void
 ;   print(BigInteger* n): char*
+=======
+;    int list_len;
+;
+;    ctor(ByteLink* list, int list_len): BigInteger*
+;    duplicate(BigInteger* n): BigInteger*
+;    free(BigInteger* n): void
+;
+;    parse(char *s): BigInterger*
+;    calcHexDigitsInteger(BigInteger* n): BigInteger*
+;    getByte(BigInteger* n): byte*
+;   
+;    add(BigInteger* n1, BigInteger* n2): BigInteger*
+;    and(BigInteger* n1, BigInteger* n2): BigInteger*
+;    or(BigInteger* n1, BigInteger* n2): BigInteger*
+;    multiply(BigInteger* n1, BigInteger* n2): BigInteger*
+;
+;    removeLeadingZeroes(BigInteger* n): void
+;    shiftLeft(BigInteger* n, int amount): void
+;    toString(BigInteger* n): char*
+>>>>>>> master
 ;}
 %endif
 
 sizeof_BigInteger EQU 8
 %define BigInteger_list(n) n+0
-%define BigInteger_hexDigitsLength(n) n+4
+%define BigInteger_list_len(n) n+4
 
-BigInteger_ctor: ; ctor(ByteLink* list, int hexDigitsLen): BigInteger*
+BigInteger_ctor: ; ctor(ByteLink* list, int list_len): BigInteger*
     %push
     ; ----- arguments -----
     %define $list ebp+8
-    %define $hexDigitsLen ebp+12
+    %define $list_len ebp+12
     ; ----- locals ------
     %define $b_integer ebp-4
     ; ----- body ------
@@ -1066,7 +1088,7 @@ BigInteger_ctor: ; ctor(ByteLink* list, int hexDigitsLen): BigInteger*
     mem_mov ebx, [BigInteger_list(eax)], [$list]
 
     ;b_integer->hexDigitsLen = hexDigitsLen
-    mem_mov ebx, [BigInteger_hexDigitsLength(eax)], [$hexDigitsLen]
+    mem_mov ebx, [BigInteger_list_len(eax)], [$hexDigitsLen]
 
 
     func_exit [$b_integer]
@@ -1092,7 +1114,7 @@ BigInteger_duplicate: ; duplicate(BigInteger* n): BigInteger*
     
     ;hexDigitsLength = n->hexDigitsLength
     mov eax, [$n]
-    mem_mov ebx, [$hexDigitsLength], [BigInteger_hexDigitsLength(eax)]
+    mem_mov ebx, [$hexDigitsLength], [BigInteger_list_len(eax)]
     
     ;b_integer = BigInteger_ctor(duplist, hexDigitsLength)
     func_call [$b_integer], BigInteger_ctor, [$duplist], [$hexDigitsLength]
@@ -1120,6 +1142,27 @@ BigInteger_free: ; free(BigInteger* n): void
     func_exit
     %pop
 
+BigInteger_parse: ; parse(char *s): BigInteger*
+    %push
+    ; ----- arguments -----
+    %define $s ebp+8
+    ; ----- locals ------
+    ; ----- body ------
+
+    %pop
+
+BigInteger_calcHexDigitsInteger: ; calcHexDigitsInteger(BigInteger* n): BigInteger*
+    %push
+    ; ----- arguments -----
+    %define $n ebp+8
+    ; ----- locals ------
+    ; ----- body ------
+    func_entry
+
+    func_exit
+    %pop
+
+; TODO: check if needed to be removed
 BigInteger_getHexDigitsLen: ; getHexDigitsLen(BigInteger* n): int
     %push
     ; ----- arguments -----
@@ -1222,7 +1265,7 @@ BigInteger_shiftLeft: ; shiftLeft(BigInteger* n, int amount): void
 
     %pop
 
-BigInteger_print: ; print(BigInteger* n): char *
+BigInteger_toString: ; toString(BigInteger* n): char*
     %push
     ; ----- arguments -----
     %define $n ebp+8
