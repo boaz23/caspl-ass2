@@ -234,6 +234,17 @@ main: ; main(int argc, char *argv[], char *envp[]): int
         jmp %3
 %endmacro
 
+; dbg_print_big_integer(n)
+%macro dbg_print_big_integer 1
+    ; if (DebugMode) print_big_integer(n);
+    cmp dword [DebugMode], FALSE
+    jne %%else
+    ; print_big_integer(n)
+    func_call eax, print_big_integer, %1
+
+    %%else:
+%endmacro
+
 myCalc: ; myCalc(): int
     %push
     ; ----- arguments -----
@@ -512,23 +523,29 @@ parse_push_big_integer: ; parse_push_big_integer(char *s): void
     ; ----- body ------
     func_entry 4
 
-    .check_can_push:
-    can_push_number [NumbersStack], .parse, .exit
-
     .parse:
     ; n = BigInteger.parse(s);
     func_call [$n], BigInteger_parse, [$s]
 
     ; if (n) goto push_num;
     cmp dword [$n], NULL
-    jne .push_num
+    jne .number_parsed_successful
     printf_line "The input is not a hex number"
+    jmp .exit
+
+    .number_parsed_successful:
+    dbg_print_big_integer [$n]
+
+    .check_can_push:
+    can_push_number [NumbersStack], .push_num, .free_big_int
+
+    .free_big_int:
+    func_call eax, BigInteger_free, [$n]
     jmp .exit
 
     .push_num:
     ; push(NumbersStack, n);
     func_call eax, BigIntegerStack_push, [NumbersStack], [$n]
-    jmp .exit
 
     .exit:
     func_exit
@@ -792,6 +809,8 @@ BigIntegerStack_push: ; push(BigStackInteger* s, BigInteger* n): void
     ; ----- locals -----
     ; ----- body ------
     func_entry
+    
+    dbg_print_big_integer [$n]
 
     func_exit
     %pop
@@ -1057,7 +1076,7 @@ BigInteger_ctor: ; ctor(ByteLink* list, int list_len): BigInteger*
     mem_mov ebx, [BigInteger_list(eax)], [$list]
 
     ;b_integer->hexDigitsLen = hexDigitsLen
-    mem_mov ebx, [BigInteger_list_len(eax)], [$hexDigitsLen]
+    mem_mov ebx, [BigInteger_list_len(eax)], [$list_len]
 
 
     func_exit [$b_integer]
@@ -1131,48 +1150,13 @@ BigInteger_calcHexDigitsInteger: ; calcHexDigitsInteger(BigInteger* n): BigInteg
     func_exit
     %pop
 
-; TODO: check if needed to be removed
-BigInteger_getHexDigitsLen: ; getHexDigitsLen(BigInteger* n): int
-    %push
-    ; ----- arguments -----
-    %define $n ebp+8
-    ; ----- locals ------
-    %define $len ebp-4
-    ; ----- body ------
-    func_entry 4
-
-    mov ebx, dword [$n]
-    mov eax, [BigInteger_hexDigitsLength(ebx)]
-    mov dword [$len], eax
-
-    func_exit [$len]
-    %pop
-
 BigInteger_getlistLen: ; getHexDigitsLen(BigInteger* n): int
     %push
     ; ----- arguments -----
     %define $n ebp+8
     ; ----- locals ------
-    %define $len ebp-4
     ; ----- body ------
-    func_entry 4
-
-    mov ebx, dword [$n]
-    mov eax, [BigInteger_hexDigitsLength(ebx)]
-
-    ; if eax is even ret eax else ret eax + 1
-    ; eax = eax /2 = BigInteger_hexDigitsLength / 2
-    mov edx, 0
-    mov ecx, 2
-    div ecx
-
-    cmp edx, 0
-    je .ret_eax
-        add eax, 1
-    .ret_eax:
-    mov dword [$len], eax
-
-    func_exit [$len]
+    
     %pop
 
 BigInteger_add: ; add(BigInteger* n1, BigInteger* n2): BigInteger*
