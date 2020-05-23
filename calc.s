@@ -3,10 +3,13 @@ NULL EQU 0
 TRUE EQU 1
 FALSE EQU 0
 
+NEW_LINE_TERMINATOR EQU 10
+NULL_TERMINATOR EQU 0
+
 STK_UNIT EQU 4
 
 DEFAULT_NUMBERS_STACK_SIZE EQU 5
-MAX_LINE_LENGTH EQU 80
+MAX_LINE_LENGTH EQU 84
 
 ; SIGNATURE: func_entry(n = 0)
 ;    n - locals size (in bytes). default is 0
@@ -62,7 +65,7 @@ MAX_LINE_LENGTH EQU 80
 ;       printf("%d\n", [r])
 %macro printf_line 1-*
     section	.rodata
-        %%format: db %1, 10, 0
+        %%format: db %1, NEW_LINE_TERMINATOR, NULL_TERMINATOR
     section	.text
         %if %0-1
             func_call eax, printf, %%format, %{2:-1}
@@ -110,8 +113,8 @@ MAX_LINE_LENGTH EQU 80
 %endmacro
 
 section .rodata
-    Err_StackOverflow: db 'Error: Operand Stack Overflow', 10, 0
-    Err_StackUnderflow: db 'Error: Insufficient Number of Arguments on Stack', 10, 0
+    Err_StackOverflow: db 'Error: Operand Stack Overflow', NEW_LINE_TERMINATOR, NULL_TERMINATOR
+    Err_StackUnderflow: db 'Error: Insufficient Number of Arguments on Stack', NEW_LINE_TERMINATOR, NULL_TERMINATOR
 
 section .bss
 
@@ -236,9 +239,10 @@ myCalc: ; myCalc(): int
     ; ----- arguments -----
     ; ----- locals -----
     ; int operations_count;
-    %define $buf ebp-80
-    %define $operations_count ebp-84
-    %define $c ebp-85
+    %define $buf ebp-MAX_LINE_LENGTH
+    %define $operations_count ebp-(MAX_LINE_LENGTH+4)
+    %define $p_last_char ebp-(MAX_LINE_LENGTH+8)
+    %define $c ebp-(MAX_LINE_LENGTH+9)
     ; ----- body ------
     func_entry MAX_LINE_LENGTH+5
 
@@ -250,6 +254,17 @@ myCalc: ; myCalc(): int
         lea eax, [$buf]
         func_call eax, fgets, eax, MAX_LINE_LENGTH, [stdin]
 
+        ; p_last_char = str_last_char(buf);
+        lea eax, [$buf]
+        func_call [$p_last_char], str_last_char, eax
+
+        ; if (*p_last_char != '\n') goto act;
+        cmp byte [$p_last_char], NEW_LINE_TERMINATOR
+        jne .act
+        mov byte [$p_last_char], NULL_TERMINATOR
+        jmp .act
+
+        .act:
         ; c = buf[0]
         lea eax, [$buf]
         mem_mov al, byte [$c], byte [eax+0]
@@ -303,7 +318,8 @@ myCalc: ; myCalc(): int
             
         .inp_parse_number:
             printf_line "Parse number"
-            func_call eax, parse_push_big_integer
+            lea eax, [$buf]
+            func_call eax, parse_push_big_integer, eax
             jmp .inp_loop_continue
 
         .inp_loop_continue:
@@ -518,7 +534,6 @@ parse_push_big_integer: ; parse_push_big_integer(char *s): void
     func_exit
     %pop
 
-
 parse_big_integer: ; parse_big_integer(char *s): BigInteger*
     %push
     ; ----- arguments -----
@@ -620,9 +635,9 @@ is_arg_debug: ; is_arg_debug(char *arg): boolean
     ; is_dbg = false;
     mov dword [$is_dbg], FALSE
 
-    cmp_char dword [$arg], 0, '-', .exit    ; if (arg[0] != '-')  goto exit;
-    cmp_char dword [$arg], 1, 'd', .exit    ; if (arg[1] != 'd')  goto exit;
-    cmp_char dword [$arg], 2, 0,   .exit    ; if (arg[2] != '\0') goto exit;
+    cmp_char dword [$arg], 0, '-', .exit                ; if (arg[0] != '-')  goto exit;
+    cmp_char dword [$arg], 1, 'd', .exit                ; if (arg[1] != 'd')  goto exit;
+    cmp_char dword [$arg], 2, NULL_TERMINATOR, .exit    ; if (arg[2] != '\0') goto exit;
 
     ; is_dbg = true;
     mov dword [$is_dbg], TRUE
@@ -719,7 +734,7 @@ str_last_char: ; str_last_char(char *s): char*
     .loop: ; while (*pc != 0)
         ; if (*pc == 0) break;
         mov eax, dword [$pc]
-        cmp byte [eax], 0
+        cmp byte [eax], NULL_TERMINATOR
         je .loop_end
 
         ; pc++;
@@ -848,7 +863,7 @@ BigIntegerStack_isFull: ; isFull(BigStackInteger* s): boolean
 ;    freeList(ByteLink *list): void
 ;    duplicate(ByteLink *list): ByteLink*
 ;    addAtStart(ByteLink** list, byte b): void
-;    chainAdd(ByteLink *link, byte b): ByteLink*
+;    addAsNext(ByteLink *link, byte b): ByteLink*
 ;}
 %endif
 
@@ -995,7 +1010,7 @@ ByteLink_addAtStart: ; addAtStart(ByteLink** list, byte b): void
     func_exit
     %pop
 
-ByteLink_chainAdd: ; chainAdd(ByteLink *link, byte b): ByteLink*
+ByteLink_addAsNext: ; addAsNext(ByteLink *link, byte b): ByteLink*
     %push
     ; ----- arguments -----
     %define $link ebp+8
@@ -1007,25 +1022,25 @@ ByteLink_chainAdd: ; chainAdd(ByteLink *link, byte b): ByteLink*
 
 ;------------------- class BigInteger -------------------
 %ifdef COMMENT
-; class BigInteger {
-;     ByteLink* list;
-;     int hexDigitsLength;
-; 
-;     ctor(ByteLink* list, int hexDigitsLen): BigInteger*
-;     duplicate(BigInteger* n): BigInteger*
-;     free(BigInteger* n): void
-; 
-;     getHexDigitsLen(BigInteger* n): int
-;     getByte(BigInteger* n): byte*
-;    
-;    add(BigInteger* n1, BigInteger* n2): BigInteger*
-;    and(BigInteger* n1, BigInteger* n2): BigInteger*
-;    or(BigInteger* n1, BigInteger* n2): BigInteger*
-;    multiply(BigInteger* n1, BigInteger* n2): BigInteger*
+;class BigInteger {
+;    ByteLink* list;
+;    int hexDigitsLength;
 ;
-;    removeLeadingZeroes(BigInteger* n): void
-;    shiftLeft(BigInteger* n, int amount): void
-;    print(BigInteger* n): char*
+;    ctor(ByteLink* list, int hexDigitsLen): BigInteger*
+;    duplicate(BigInteger* n): BigInteger*
+;    free(BigInteger* n): void
+;
+;    getHexDigitsLen(BigInteger* n): int
+;    getByte(BigInteger* n): byte*
+;   
+;   add(BigInteger* n1, BigInteger* n2): BigInteger*
+;   and(BigInteger* n1, BigInteger* n2): BigInteger*
+;   or(BigInteger* n1, BigInteger* n2): BigInteger*
+;   multiply(BigInteger* n1, BigInteger* n2): BigInteger*
+;
+;   removeLeadingZeroes(BigInteger* n): void
+;   shiftLeft(BigInteger* n, int amount): void
+;   print(BigInteger* n): char*
 ;}
 %endif
 
