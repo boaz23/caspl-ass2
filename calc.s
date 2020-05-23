@@ -112,11 +112,16 @@ MAX_LINE_LENGTH EQU 80
 section .rodata
 
 section .bss
-    NumberStack: resb STK_UNIT
 
 section .data
-    DebugMode: db 0
-    NumbersStackCapacity: db DEFAULT_NUMBERS_STACK_SIZE
+    %ifdef TEST_C
+    global DebugMode
+    global NumberStack
+    global NumbersStackCapacity
+    %endif
+    DebugMode: dd 0
+    NumberStack: dd NULL
+    NumbersStackCapacity: dd DEFAULT_NUMBERS_STACK_SIZE
 
 section .text
     align 16
@@ -134,28 +139,60 @@ section .text
     extern stdin
     extern stderr
 
+%ifdef TEST_C
+    global set_run_settings_from_args
+    global is_arg_debug
+    global try_parse_arg_hex_string_num
+    global str_last_char
+    
+main_1:
+%else
 main: ; main(int argc, char *argv[], char *envp[]): int
+%endif
     %push
     ; ----- arguments -----
+    %define $argc ebp+8
+    %define $argv ebp+12
+    %define $envp ebp+16
     ; ----- locals -----
     ; int operations_count;
     %define $operations_count ebp-4
     ; ----- body ------
+    func_entry 4
 
-    mov ebp, esp
-    sub esp, 4
+    func_call eax, set_run_settings_from_args, [$argc], [$argv]
+    func_call [NumberStack], BigIntegerStack_ctor, [NumbersStackCapacity]
     
     func_call [$operations_count], myCalc
-    printf_line "%X", [$operations_count]
-    mov eax, [$operations_count]
+    printf_line "%X %d %d", [$operations_count], [DebugMode], [NumbersStackCapacity]
 
-    mov esp, ebp
+    func_call eax, free, [NumberStack]
 
-    mov     ebx, eax
-    mov     eax, 1
-    int     0x80
-    nop
+    func_exit [$operations_count]
     %pop
+
+; cmp_char(str, i, c, else)
+; if (str[i] != c) goto else;
+%macro cmp_char 4
+    mov eax, %1
+    mov bl, byte [eax+%2]
+    cmp bl, %3
+    jne %4
+%endmacro
+
+; cmp_char_in_range(c, c_start, c_end, then)
+; if (c_start <= c && c <= c_end) goto then;
+%macro cmp_char_in_range 4
+    ; if (c_start < c) goto else;
+    cmp %1, %2
+    jl %%else
+    ; if (c > c_end) goto else;
+    cmp %1, %3
+    jg %%else
+
+    jmp %4 ; goto then;
+    %%else:
+%endmacro
 
 myCalc: ; myCalc(): int
     %push
@@ -170,6 +207,192 @@ myCalc: ; myCalc(): int
 
     func_exit [$operations_count]
     %pop
+
+set_run_settings_from_args: ; set_run_settings_from_args(int argc, char *argv[]): void
+    %push
+    ; ----- arguments -----
+    %define $argc ebp+8
+    %define $argv ebp+12
+    ; ----- locals -----
+    ; int i;
+    ; char *arg;
+    %define $i ebp-4
+    %define $arg ebp-8
+    %define $is_match ebp-12
+    %define $stack_size ebp-16
+    ; ----- body ------
+    func_entry 16
+
+    mov dword [$i], 1
+    .args_loop: ; for(i = 1; i < argc; i++)
+    ; if (i >= argc) break;
+    mov eax, dword [$argc]
+    cmp dword [$i], eax
+    jge .args_loop_end
+    
+    ; arg = argv[i];
+    mov eax, dword [$argv]
+    mov ebx, dword [$i]
+    mem_mov ecx, [$arg], [eax+4*ebx]
+
+    .check_dbg:
+    ; is_match = is_arg_dbg(arg);
+    func_call [$is_match], is_arg_debug, [$arg]
+    ; if (!is_match) goto check_stack_size;
+    cmp dword [$is_match], FALSE
+    je .check_stack_size
+    ; DebugMode = TRUE;
+    mov dword [DebugMode], TRUE
+    ; continue;
+    jmp .continue
+
+    .check_stack_size:
+        ; stack_size = try_parse_arg_hex_string_num(arg);
+        func_call [$stack_size], try_parse_arg_hex_string_num, [$arg]
+        ; if (stack_size < 0) continue; (invalid hex number)
+        cmp dword [$stack_size], 0
+        jl .continue
+        
+        ; NumbersStackCapacity = stack_size;
+        mem_mov eax, [NumbersStackCapacity], [$stack_size]
+        jmp .continue
+
+    .continue:
+    ; i++
+    inc dword [$i]
+    jmp .args_loop
+    .args_loop_end:
+
+    func_exit
+    %pop
+
+is_arg_debug: ; is_arg_debug(char *arg): boolean
+    %push
+    ; ----- arguments -----
+    %define $arg ebp+8
+    ; ----- locals -----
+    ; boolean is_dbg
+    %define $is_dbg ebp-4
+    ; ----- body ------
+    func_entry 4
+
+    ; is_dbg = false;
+    mov dword [$is_dbg], FALSE
+
+    cmp_char dword [$arg], 0, '-', .exit    ; if (arg[0] != '-')  goto exit;
+    cmp_char dword [$arg], 1, 'd', .exit    ; if (arg[1] != 'd')  goto exit;
+    cmp_char dword [$arg], 2, 0,   .exit    ; if (arg[2] != '\0') goto exit;
+
+    ; is_dbg = true;
+    mov dword [$is_dbg], TRUE
+
+    .exit:
+    func_exit [$is_dbg]
+    %pop
+
+try_parse_arg_hex_string_num: ; try_parse_arg_hex_string_num(char *arg): int
+    %push
+    ; ----- arguments -----
+    %define $arg ebp+8
+    ; ----- locals -----
+    ; boolean is_hex_num
+    %define $num ebp-4
+    %define $plc ebp-8
+    %define $pc ebp-12
+    %define $c ebp-13
+    %define $c_num_val ebp-14
+    ; ----- body ------
+    func_entry 14
+
+    ; num = 0;
+    mov dword [$num], 0
+    
+    ; plc = str_last_char(arg);
+    func_call [$plc], str_last_char, [$arg]
+    ; pc = arg;
+    mem_mov eax, [$pc], [$arg]
+
+    ; if (plc < pc) goto invalid_num;
+    mov eax, [$pc]
+    cmp [$plc], eax
+    jl .invalid_num
+
+    .conversion_loop: ; do { ... } while(pc >= arg);
+        ; c = *pc;
+        mov eax, dword [$pc]
+        mem_mov al, byte [$c], byte [eax]
+        
+        shl dword [$num], 4
+        
+        cmp_char_in_range byte [$c], 'A', 'F', .convert_hex_letter  ; if ('A' <= c && c <= 'F') goto convert_hex_letter;
+        cmp_char_in_range byte [$c], '0', '9', .convert_dec_digit   ; else if ('0' <= c && c <= '9') goto convert_dec_digit;
+        jmp .invalid_num                                            ; else { goto invalid_num; }
+
+        .convert_hex_letter:
+            ; c_num_val = c - ('A' - 10);
+            mov al, byte [$c]
+            sub al, 'A'-10
+            mov byte [$c_num_val], al
+            jmp .add_digit
+        .convert_dec_digit:
+            ; c_num_val = c - '0';
+            mov al, byte [$c]
+            sub al, '0'
+            mov byte [$c_num_val], al
+            jmp .add_digit
+
+        .add_digit:
+            ; num |= c_num_val;
+            mov al, byte [$c_num_val]
+            or byte [$num+0], al
+
+        .conversion_loop_increment:
+        inc dword [$pc] ; pc--;
+
+        .conversion_loop_condition:
+        ; if (pc <= plc) loop;
+        mov eax, dword [$plc]
+        cmp dword [$pc], eax
+        jle .conversion_loop
+    .conversion_loop_end:
+    jmp .exit
+
+    .invalid_num:
+    mov dword [$num], -1
+
+    .exit:
+    func_exit [$num]
+    %pop
+
+str_last_char: ; str_last_char(char *s): char*
+    %push
+    ; ----- arguments -----
+    %define $s ebp+8
+    ; ----- locals -----
+    %define $pc ebp-4
+    ; ----- body ------
+    func_entry 4
+    
+    mem_mov eax, [$pc], [$s] ; ps = s;
+
+    .loop: ; while (*pc != 0)
+        ; if (*pc == 0) break;
+        mov eax, dword [$pc]
+        cmp byte [eax], 0
+        je .loop_end
+
+        ; pc++;
+        inc dword [$pc]
+        jmp .loop
+    .loop_end:
+
+    ; pc--;
+    dec dword [$pc]
+    func_exit [$pc]
+    %pop
+
+%unmacro cmp_char 4
+%unmacro cmp_char_in_range 4
 
 ;------------------- class BigIntegerStack -------------------
 %ifdef COMMENT
@@ -197,7 +420,8 @@ BigIntegerStack_ctor: ; ctor(int capacity): BigInteger*
     %define $capacity ebp+8
     ; ----- locals -----
     ; ----- body ------
-
+    func_call eax, malloc, 1
+    ret
     %pop
 
 BigIntegerStack_push: ; push(BigStackInteger* s, BigInteger* n): void
@@ -207,7 +431,9 @@ BigIntegerStack_push: ; push(BigStackInteger* s, BigInteger* n): void
     %define $n ebp+12
     ; ----- locals -----
     ; ----- body ------
+    func_entry
 
+    func_exit
     %pop
 
 BigIntegerStack_pop: ; pop(BigStackInteger* s): BigInteger*
@@ -216,7 +442,9 @@ BigIntegerStack_pop: ; pop(BigStackInteger* s): BigInteger*
     %define $s ebp+8
     ; ----- locals -----
     ; ----- body ------
+    func_entry
 
+    func_exit
     %pop
 
 
@@ -227,7 +455,9 @@ BigIntegerStack_hasAtLeastItems: ; hasAtLeastItems(BigStackInteger* s, int amoun
     %define $amount ebp+12
     ; ----- locals -----
     ; ----- body ------
+    func_entry
 
+    func_exit
     %pop
     
 BigIntegerStack_isFull: ; isFull(BigStackInteger* s): boolean
@@ -236,7 +466,9 @@ BigIntegerStack_isFull: ; isFull(BigStackInteger* s): boolean
     %define $s ebp+8
     ; ----- locals -----
     ; ----- body ------
+    func_entry
 
+    func_exit
     %pop
 
 ;------------------- class ByteLink -------------------
