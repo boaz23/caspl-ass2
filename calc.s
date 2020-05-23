@@ -110,17 +110,19 @@ MAX_LINE_LENGTH EQU 80
 %endmacro
 
 section .rodata
+    Err_StackOverflow: db 'Error: Operand Stack Overflow', 10, 0
+    Err_StackUnderflow: db 'Error: Insufficient Number of Arguments on Stack', 10, 0
 
 section .bss
 
 section .data
     %ifdef TEST_C
     global DebugMode
-    global NumberStack
+    global NumbersStack
     global NumbersStackCapacity
     %endif
     DebugMode: dd 0
-    NumberStack: dd NULL
+    NumbersStack: dd NULL
     NumbersStackCapacity: dd DEFAULT_NUMBERS_STACK_SIZE
 
 section .text
@@ -161,12 +163,12 @@ main: ; main(int argc, char *argv[], char *envp[]): int
     func_entry 4
 
     func_call eax, set_run_settings_from_args, [$argc], [$argv]
-    func_call [NumberStack], BigIntegerStack_ctor, [NumbersStackCapacity]
+    func_call [NumbersStack], BigIntegerStack_ctor, [NumbersStackCapacity]
     
     func_call [$operations_count], myCalc
     printf_line "%X", [$operations_count]
 
-    func_call eax, BigIntegerStack_free, [NumberStack]
+    func_call eax, BigIntegerStack_free, [NumbersStack]
 
     func_exit [$operations_count]
     %pop
@@ -201,6 +203,34 @@ main: ; main(int argc, char *argv[], char *envp[]): int
     %%else:
 %endmacro
 
+; can_pop_numbers(stack, amount, if_can, if_cant)
+%macro can_pop_numbers 4
+    ; eax = hasAtLeastItems(NumbersStack, amount);
+    func_call eax, BigIntegerStack_hasAtLeastItems, %1, %2
+
+    ; if (eax) goto if_can
+    cmp eax, FALSE
+    jne %3
+
+    %%err_underflow:
+        func_call eax, printf, Err_StackUnderflow
+        jmp %4
+%endmacro
+
+; can_push_number(stack, if_can, if_cant)
+%macro can_push_number 3
+    ; eax = isFull(stack);
+    func_call eax, BigIntegerStack_isFull, %1
+
+    ; if (!eax) goto if_can
+    cmp eax, FALSE
+    je %2
+
+    %%err_overflow:
+        func_call eax, printf, Err_StackOverflow
+        jmp %3
+%endmacro
+
 myCalc: ; myCalc(): int
     %push
     ; ----- arguments -----
@@ -227,37 +257,48 @@ myCalc: ; myCalc(): int
         ; information and input actions
         .inp_quit:
             cmp_char byte [$c], 'q', .inp_print
-            printf_line "Quit"
             jmp .input_loop_end
+            
         .inp_print:
             cmp_char byte [$c], 'p', .inp_hex_digits_len
             printf_line "Print number"
+            func_call eax, print_top_stack_number
             jmp .inp_loop_continue
+
         .inp_hex_digits_len:
             cmp_char byte [$c], 'n', .inp_duplicate
             printf_line "Print number of hex digits"
+            func_call eax, push_top_stack_number_hex_digits_amount
             jmp .inp_loop_continue
+
         .inp_duplicate:
             cmp_char byte [$c], 'd', .inp_add
             printf_line "Duplicate"
+            func_call eax, duplicate_top_stack_number
             jmp .inp_loop_continue
 
         ; number operations
         .inp_add:
             cmp_char byte [$c], '+', .inp_multiply
             printf_line "Add"
+            func_call eax, add_two_top_of_stack
             jmp .inp_loop_continue
+
         .inp_multiply:
             cmp_char byte [$c], '*', .inp_bitwise_and
             printf_line "Multiplication is not supported"
             jmp .inp_loop_continue
+
         .inp_bitwise_and:
             cmp_char byte [$c], '&', .inp_bitwise_or
             printf_line "Bitwise end"
+            func_call eax, and_two_top_of_stack
             jmp .inp_loop_continue
+
         .inp_bitwise_or:
             cmp_char byte [$c], '|', .inp_parse_number
             printf_line "Bitwise or"
+            func_call eax, or_two_top_of_stack
             jmp .inp_loop_continue
             
         .inp_parse_number:
@@ -270,6 +311,198 @@ myCalc: ; myCalc(): int
     .input_loop_end:
 
     func_exit [$operations_count]
+    %pop
+
+print_top_stack_number: ; print_number_stack_top(): void
+    %push
+    ; ----- arguments -----
+    ; ----- locals -----
+    %define $n ebp-4
+    ; ----- body ------
+    func_entry 4
+
+    .check_can_pop:
+    can_pop_numbers [NumbersStack], 1, .print, .exit
+
+    .print:
+    ; n = pop(NumbersStack);
+    func_call [$n], BigIntegerStack_pop, [NumbersStack]
+    ; print_big_integer(n);
+    func_call eax, print_big_integer, [$n]
+    ; free(n);
+    func_call eax, BigInteger_free, [$n]
+    jmp .exit
+
+    .exit:
+    func_exit
+    %pop
+
+push_top_stack_number_hex_digits_amount: ; print_number_stack_top_hex_digits_len(): void
+    %push
+    ; ----- arguments -----
+    ; ----- locals -----
+    %define $n ebp-4
+    ; ----- body ------
+    func_entry 4
+
+    .check_can_pop:
+    can_pop_numbers [NumbersStack], 1, .push_hex_digits_amount, .exit
+
+    .push_hex_digits_amount:
+    ; n = pop(NumbersStack);
+    func_call [$n], BigIntegerStack_pop, [NumbersStack]
+
+    ; TODO: get the number of hex digits as a BigInteger and push it into the stack
+    
+    ; free(n);
+    func_call eax, BigInteger_free, [$n]
+
+    jmp .exit
+
+    .exit:
+    func_exit
+    %pop
+
+duplicate_top_stack_number: ; duplicate_top_stack_number(): void
+    %push
+    ; ----- arguments -----
+    ; ----- locals -----
+    %define $n ebp-4
+    %define $n_dup ebp-8
+    ; ----- body ------
+    func_entry 8
+
+    .check_can_pop:
+    can_pop_numbers [NumbersStack], 1, .check_can_push, .exit
+    .check_can_push:
+    can_push_number [NumbersStack], .duplicate, .exit
+
+    .duplicate:
+    ; n = pop(NumbersStack);
+    func_call [$n], BigIntegerStack_peek, [NumbersStack]
+    ; n_dup = duplicate(n);
+    func_call [$n_dup], BigInteger_duplicate, [$n]
+    ; push(NumbersStack, n_dup);
+    func_call eax, BigIntegerStack_push, [NumbersStack], [$n_dup]
+    jmp .exit
+
+    .exit:
+    func_exit
+    %pop
+
+add_two_top_of_stack: ; add_two_top_of_stack(): void
+    %push
+    ; ----- arguments -----
+    ; ----- locals -----
+    %define n1 ebp-4
+    %define n2 ebp-8
+    %define n_res ebp-12
+    ; ----- body ------
+    func_entry 12
+
+    .check_can_pop:
+    can_pop_numbers [NumbersStack], 2, .add, .exit
+
+    .add:
+    ; n1 = pop(NumbersStack);
+    func_call [$n1], BigIntegerStack_pop, [NumbersStack]
+    ; n2 = pop(NumbersStack);
+    func_call [$n2], BigIntegerStack_pop, [NumbersStack]
+    ; n_res = add(n1, n2);
+    func_call [$n_res], BigInteger_add, [$n1], [$n2]
+    ; push(NumbersStack, n_res);
+    func_call eax, BigIntegerStack_push, [NumbersStack], [$n_res]
+    ; free(n1);
+    func_call eax, BigInteger_free, [$n1]
+    ; free(n2);
+    func_call eax, BigInteger_free, [$n2]
+    jmp .exit
+
+    .exit:
+    func_exit
+    %pop
+
+and_two_top_of_stack: ; and_two_top_of_stack(): void
+    %push
+    ; ----- arguments -----
+    ; ----- locals -----
+    %define n1 ebp-4
+    %define n2 ebp-8
+    %define n_res ebp-12
+    ; ----- body ------
+    func_entry 12
+
+    .check_can_pop:
+    can_pop_numbers [NumbersStack], 2, .add, .exit
+
+    .add:
+    ; n1 = pop(NumbersStack);
+    func_call [$n1], BigIntegerStack_pop, [NumbersStack]
+    ; n2 = pop(NumbersStack);
+    func_call [$n2], BigIntegerStack_pop, [NumbersStack]
+    ; n_res = add(n1, n2);
+    func_call [$n_res], BigInteger_and, [$n1], [$n2]
+    ; push(NumbersStack, n_res);
+    func_call eax, BigIntegerStack_push, [NumbersStack], [$n_res]
+    ; free(n1);
+    func_call eax, BigInteger_free, [$n1]
+    ; free(n2);
+    func_call eax, BigInteger_free, [$n2]
+    jmp .exit
+
+    .exit:
+    func_exit
+    %pop
+
+or_two_top_of_stack: ; or_two_top_of_stack(): void
+    %push
+    ; ----- arguments -----
+    ; ----- locals -----
+    %define n1 ebp-4
+    %define n2 ebp-8
+    %define n_res ebp-12
+    ; ----- body ------
+    func_entry 12
+
+    .check_can_pop:
+    can_pop_numbers [NumbersStack], 2, .add, .exit
+
+    .add:
+    ; n1 = pop(NumbersStack);
+    func_call [$n1], BigIntegerStack_pop, [NumbersStack]
+    ; n2 = pop(NumbersStack);
+    func_call [$n2], BigIntegerStack_pop, [NumbersStack]
+    ; n_res = add(n1, n2);
+    func_call [$n_res], BigInteger_or, [$n1], [$n2]
+    ; push(NumbersStack, n_res);
+    func_call eax, BigIntegerStack_push, [NumbersStack], [$n_res]
+    ; free(n1);
+    func_call eax, BigInteger_free, [$n1]
+    ; free(n2);
+    func_call eax, BigInteger_free, [$n2]
+    jmp .exit
+
+    .exit:
+    func_exit
+    %pop
+
+print_big_integer: ; print_big_integer(BigInteger* n): void
+    %push
+    ; ----- arguments -----
+    %define $n ebp+8
+    ; ----- locals -----
+    %define $s ebp-4
+    ; ----- body ------
+    func_entry 4
+
+    ; s = print(n);
+    func_call [$s], BigInteger_print, [$n]
+    ; printf("%s\n", s);
+    printf_line "%s", [$s]
+    ; free(s);
+    func_call eax, free, [$s]
+
+    func_exit
     %pop
 
 set_run_settings_from_args: ; set_run_settings_from_args(int argc, char *argv[]): void
@@ -470,6 +703,7 @@ str_last_char: ; str_last_char(char *s): char*
 ;    free(BigIntegerStack* s);
 ;    push(BigStackInteger* s, BigInteger* n): void
 ;    pop(BigStackInteger* s): BigInteger*
+;    peek(BigStackInteger* s): BigInteger*
 ;    hasAtLeastItems(BigStackInteger* s, int amount): boolean
 ;    isFull(BigStackInteger* s): boolean
 ;}
@@ -515,6 +749,17 @@ BigIntegerStack_push: ; push(BigStackInteger* s, BigInteger* n): void
     %pop
 
 BigIntegerStack_pop: ; pop(BigStackInteger* s): BigInteger*
+    %push
+    ; ----- arguments -----
+    %define $s ebp+8
+    ; ----- locals -----
+    ; ----- body ------
+    func_entry
+
+    func_exit
+    %pop
+
+BigIntegerStack_peek: ; peek(BigStackInteger* s): BigInteger*
     %push
     ; ----- arguments -----
     %define $s ebp+8
@@ -727,14 +972,7 @@ ByteLink_chainAdd: ; chainAdd(ByteLink *link, byte b): ByteLink*
 ;     free(BigInteger* n): void
 ; 
 ;     getHexDigitsLen(BigInteger* n): int
-;     getByte(BigInteger* n): byte
-;
-;     add(BigInteger* n1, BigInteger* n2): BigInteger*
-;     and(BigInteger* n1, BigInteger* n2): BigInteger*
-;     or(BigInteger* n1, BigInteger* n2): BigInteger*
-;     multiply(BigInteger* n1, BigInteger* n2): BigInteger*
-;
-;    getHexDigitsLen(BigInteger* n): BigInteger*
+;     getByte(BigInteger* n): byte*
 ;    
 ;    add(BigInteger* n1, BigInteger* n2): BigInteger*
 ;    and(BigInteger* n1, BigInteger* n2): BigInteger*
@@ -743,7 +981,7 @@ ByteLink_chainAdd: ; chainAdd(ByteLink *link, byte b): ByteLink*
 ;
 ;    removeLeadingZeroes(BigInteger* n): void
 ;    shiftLeft(BigInteger* n, int amount): void
-;    print(BigInteger* n): void
+;    print(BigInteger* n): char*
 ;}
 %endif
 
