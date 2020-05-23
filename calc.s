@@ -370,8 +370,9 @@ push_top_stack_number_hex_digits_amount: ; print_number_stack_top_hex_digits_len
     ; ----- arguments -----
     ; ----- locals -----
     %define $n ebp-4
+    %define $n_num_hex_digits ebp-8
     ; ----- body ------
-    func_entry 4
+    func_entry 8
 
     .check_can_pop:
     can_pop_numbers [NumbersStack], 1, .push_hex_digits_amount, .exit
@@ -379,9 +380,10 @@ push_top_stack_number_hex_digits_amount: ; print_number_stack_top_hex_digits_len
     .push_hex_digits_amount:
     ; n = pop(NumbersStack);
     func_call [$n], BigIntegerStack_pop, [NumbersStack]
-
-    ; TODO: get the number of hex digits as a BigInteger and push it into the stack
-    
+    ; n_num_hex_digits = BigInteger.calcHexDigitsInteger(n);
+    func_call [$n_num_hex_digits], BigInteger_calcHexDigitsInteger, [$n]
+    ; push(NumbersStack, n_num_hex_digits);
+    func_call eax, BigIntegerStack_push, [NumbersStack], [$n_num_hex_digits]
     ; free(n);
     func_call eax, BigInteger_free, [$n]
 
