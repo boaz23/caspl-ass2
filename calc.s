@@ -164,9 +164,9 @@ main: ; main(int argc, char *argv[], char *envp[]): int
     func_call [NumberStack], BigIntegerStack_ctor, [NumbersStackCapacity]
     
     func_call [$operations_count], myCalc
-    printf_line "%X %d %d", [$operations_count], [DebugMode], [NumbersStackCapacity]
+    printf_line "%X", [$operations_count]
 
-    func_call eax, free, [NumberStack]
+    func_call eax, BigIntegerStack_free, [NumberStack]
 
     func_exit [$operations_count]
     %pop
@@ -402,6 +402,7 @@ str_last_char: ; str_last_char(char *s): char*
 ;    int sp;
 ;
 ;    ctor(int capacity): BigIntegerStack*
+;    free(BigIntegerStack* s);
 ;    push(BigStackInteger* s, BigInteger* n): void
 ;    pop(BigStackInteger* s): BigInteger*
 ;    hasAtLeastItems(BigStackInteger* s, int amount): boolean
@@ -420,8 +421,20 @@ BigIntegerStack_ctor: ; ctor(int capacity): BigInteger*
     %define $capacity ebp+8
     ; ----- locals -----
     ; ----- body ------
-    func_call eax, malloc, 1
-    ret
+    func_entry
+
+    func_exit
+    %pop
+
+BigIntegerStack_free: ; free(BigIntegerStack* s): void
+    %push
+    ; ----- arguments -----
+    %define $capacity ebp+8
+    ; ----- locals -----
+    ; ----- body ------
+    func_entry
+
+    func_exit
     %pop
 
 BigIntegerStack_push: ; push(BigStackInteger* s, BigInteger* n): void
