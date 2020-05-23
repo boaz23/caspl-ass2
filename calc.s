@@ -180,6 +180,13 @@ main: ; main(int argc, char *argv[], char *envp[]): int
     jne %4
 %endmacro
 
+; cmp_char(c, ccmp, else)
+; if (c != ccmp) goto else;
+%macro cmp_char 3
+    cmp %1, %2
+    jne %3
+%endmacro
+
 ; cmp_char_in_range(c, c_start, c_end, then)
 ; if (c_start <= c && c <= c_end) goto then;
 %macro cmp_char_in_range 4
@@ -199,11 +206,68 @@ myCalc: ; myCalc(): int
     ; ----- arguments -----
     ; ----- locals -----
     ; int operations_count;
-    %define $operations_count ebp-4
+    %define $buf ebp-80
+    %define $operations_count ebp-84
+    %define $c ebp-85
     ; ----- body ------
-    func_entry 4
+    func_entry MAX_LINE_LENGTH+5
 
+    ; operations_count = 0;
     mov dword [$operations_count], 0
+
+    .input_loop: ;while (true)
+        ; fgets(buf, arr_len(buf), stdin);
+        lea eax, [$buf]
+        func_call eax, fgets, eax, MAX_LINE_LENGTH, [stdin]
+
+        ; c = buf[0]
+        lea eax, [$buf]
+        mem_mov al, byte [$c], byte [eax+0]
+
+        ; information and input actions
+        .inp_quit:
+            cmp_char byte [$c], 'q', .inp_print
+            printf_line "Quit"
+            jmp .input_loop_end
+        .inp_print:
+            cmp_char byte [$c], 'p', .inp_hex_digits_len
+            printf_line "Print number"
+            jmp .inp_loop_continue
+        .inp_hex_digits_len:
+            cmp_char byte [$c], 'n', .inp_duplicate
+            printf_line "Print number of hex digits"
+            jmp .inp_loop_continue
+        .inp_duplicate:
+            cmp_char byte [$c], 'd', .inp_add
+            printf_line "Duplicate"
+            jmp .inp_loop_continue
+
+        ; number operations
+        .inp_add:
+            cmp_char byte [$c], '+', .inp_multiply
+            printf_line "Add"
+            jmp .inp_loop_continue
+        .inp_multiply:
+            cmp_char byte [$c], '*', .inp_bitwise_and
+            printf_line "Multiplication is not supported"
+            jmp .inp_loop_continue
+        .inp_bitwise_and:
+            cmp_char byte [$c], '&', .inp_bitwise_or
+            printf_line "Bitwise end"
+            jmp .inp_loop_continue
+        .inp_bitwise_or:
+            cmp_char byte [$c], '|', .inp_parse_number
+            printf_line "Bitwise or"
+            jmp .inp_loop_continue
+            
+        .inp_parse_number:
+            printf_line "Parse number"
+            jmp .inp_loop_continue
+
+        .inp_loop_continue:
+        inc dword [$operations_count]
+        jmp .input_loop
+    .input_loop_end:
 
     func_exit [$operations_count]
     %pop
@@ -392,6 +456,7 @@ str_last_char: ; str_last_char(char *s): char*
     %pop
 
 %unmacro cmp_char 4
+%unmacro cmp_char 3
 %unmacro cmp_char_in_range 4
 
 ;------------------- class BigIntegerStack -------------------
