@@ -265,9 +265,9 @@ void test_BigInteger_add1(){
         printf("test_BigInteger_add return null BigInteger\n"); 
     }
 
-    free(n1); free(n2);
+    BigInteger_free(n1); BigInteger_free(n2);
     if(add != NULL){
-        free(add);
+        BigInteger_free(add);
     }
 }
 
@@ -310,9 +310,9 @@ void test_BigInteger_add2(){
         printf("test_BigInteger_add return null BigInteger\n"); 
     }
 
-    free(n1); free(n2);
+    BigInteger_free(n1); BigInteger_free(n2);
     if(add != NULL){
-        free(add);
+        BigInteger_free(add);
     }
 }
 
@@ -352,9 +352,9 @@ void test_BigInteger_and1(){
         printf("test_BigInteger_and1 return null BigInteger\n"); 
     }
 
-    free(n1); free(n2);
+    BigInteger_free(n1); BigInteger_free(n2);
     if(and != NULL){
-        free(and);
+        BigInteger_free(and);
     }
 }
 
@@ -395,9 +395,9 @@ void test_BigInteger_and2(){
         printf("test_BigInteger_add2 return null BigInteger\n"); 
     }
 
-    free(n1); free(n2);
+    BigInteger_free(n1); BigInteger_free(n2);
     if(and != NULL){
-        free(and);
+        BigInteger_free(and);
     }
 }
 
@@ -442,9 +442,9 @@ void test_BigInteger_or(){
         printf("test_BigInteger_or return null BigInteger\n"); 
     }
 
-    free(n1); free(n2);
+    BigInteger_free(n1); BigInteger_free(n2);
     if(or != NULL){
-        free(or);
+        BigInteger_free(or);
     }
 }
 
