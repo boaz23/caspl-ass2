@@ -245,6 +245,38 @@ main: ; main(int argc, char *argv[], char *envp[]): int
     %%else:
 %endmacro
 
+%macro big_integers_do_op_two_top_of_stack 1
+    %push
+    ; ----- arguments -----
+    ; ----- locals -----
+    %define $n1 ebp-4
+    %define $n2 ebp-8
+    %define $n_res ebp-12
+    ; ----- body ------
+    func_entry 12
+
+    %%check_can_pop:
+    can_pop_numbers [NumbersStack], 2, %%do_op, %%exit
+
+    %%do_op:
+    ; n1 = pop(NumbersStack);
+    func_call [$n1], BigIntegerStack_pop, [NumbersStack]
+    ; n2 = pop(NumbersStack);
+    func_call [$n2], BigIntegerStack_pop, [NumbersStack]
+    ; n_res = add(n1, n2);
+    func_call [$n_res], %1, [$n1], [$n2]
+    ; push(NumbersStack, n_res);
+    func_call eax, BigIntegerStack_push, [NumbersStack], [$n_res]
+    ; free(n1);
+    func_call eax, BigInteger_free, [$n1]
+    ; free(n2);
+    func_call eax, BigInteger_free, [$n2]
+
+    %%exit:
+    func_exit
+    %pop
+%endmacro
+
 myCalc: ; myCalc(): int
     %push
     ; ----- arguments -----
@@ -417,97 +449,13 @@ duplicate_top_stack_number: ; duplicate_top_stack_number(): void
     %pop
 
 add_two_top_of_stack: ; add_two_top_of_stack(): void
-    %push
-    ; ----- arguments -----
-    ; ----- locals -----
-    %define $n1 ebp-4
-    %define $n2 ebp-8
-    %define $n_res ebp-12
-    ; ----- body ------
-    func_entry 12
-
-    .check_can_pop:
-    can_pop_numbers [NumbersStack], 2, .add, .exit
-
-    .add:
-    ; n1 = pop(NumbersStack);
-    func_call [$n1], BigIntegerStack_pop, [NumbersStack]
-    ; n2 = pop(NumbersStack);
-    func_call [$n2], BigIntegerStack_pop, [NumbersStack]
-    ; n_res = add(n1, n2);
-    func_call [$n_res], BigInteger_add, [$n1], [$n2]
-    ; push(NumbersStack, n_res);
-    func_call eax, BigIntegerStack_push, [NumbersStack], [$n_res]
-    ; free(n1);
-    func_call eax, BigInteger_free, [$n1]
-    ; free(n2);
-    func_call eax, BigInteger_free, [$n2]
-
-    .exit:
-    func_exit
-    %pop
+    big_integers_do_op_two_top_of_stack BigInteger_add
 
 and_two_top_of_stack: ; and_two_top_of_stack(): void
-    %push
-    ; ----- arguments -----
-    ; ----- locals -----
-    %define $n1 ebp-4
-    %define $n2 ebp-8
-    %define $n_res ebp-12
-    ; ----- body ------
-    func_entry 12
-
-    .check_can_pop:
-    can_pop_numbers [NumbersStack], 2, .add, .exit
-
-    .add:
-    ; n1 = pop(NumbersStack);
-    func_call [$n1], BigIntegerStack_pop, [NumbersStack]
-    ; n2 = pop(NumbersStack);
-    func_call [$n2], BigIntegerStack_pop, [NumbersStack]
-    ; n_res = add(n1, n2);
-    func_call [$n_res], BigInteger_and, [$n1], [$n2]
-    ; push(NumbersStack, n_res);
-    func_call eax, BigIntegerStack_push, [NumbersStack], [$n_res]
-    ; free(n1);
-    func_call eax, BigInteger_free, [$n1]
-    ; free(n2);
-    func_call eax, BigInteger_free, [$n2]
-
-    .exit:
-    func_exit
-    %pop
+    big_integers_do_op_two_top_of_stack BigInteger_and
 
 or_two_top_of_stack: ; or_two_top_of_stack(): void
-    %push
-    ; ----- arguments -----
-    ; ----- locals -----
-    %define $n1 ebp-4
-    %define $n2 ebp-8
-    %define $n_res ebp-12
-    ; ----- body ------
-    func_entry 12
-
-    .check_can_pop:
-    can_pop_numbers [NumbersStack], 2, .add, .exit
-
-    .add:
-    ; n1 = pop(NumbersStack);
-    func_call [$n1], BigIntegerStack_pop, [NumbersStack]
-    ; n2 = pop(NumbersStack);
-    func_call [$n2], BigIntegerStack_pop, [NumbersStack]
-    ; n_res = add(n1, n2);
-    func_call [$n_res], BigInteger_or, [$n1], [$n2]
-    ; push(NumbersStack, n_res);
-    func_call eax, BigIntegerStack_push, [NumbersStack], [$n_res]
-    ; free(n1);
-    func_call eax, BigInteger_free, [$n1]
-    ; free(n2);
-    func_call eax, BigInteger_free, [$n2]
-
-    .exit:
-    func_exit
-    %pop
+    big_integers_do_op_two_top_of_stack BigInteger_or
 
 parse_push_big_integer: ; parse_push_big_integer(char *s): void
     %push
