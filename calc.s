@@ -775,7 +775,7 @@ BigIntegerStack_push: ; push(BigStackInteger* s, BigInteger* n): void
     func_entry 4
     
     dbg_print_big_integer [$n], "Pushed number: "
-    mov dword [ebp-4], 0
+    func_call eax, free, [$n]
 
     func_exit [ebp-4]
     %pop
@@ -801,7 +801,7 @@ BigIntegerStack_peek: ; peek(BigStackInteger* s): BigInteger*
     ; ----- body ------
     func_entry 4
 
-    func_call [ebp-4], malloc, sizeof_BigInteger
+    mov dword [ebp-4], 0
 
     func_exit [ebp-4]
     %pop
