@@ -255,7 +255,7 @@ myCalc: ; myCalc(): int
     %define $p_last_char ebp-(MAX_LINE_LENGTH+8)
     %define $c ebp-(MAX_LINE_LENGTH+9)
     ; ----- body ------
-    func_entry MAX_LINE_LENGTH+5
+    func_entry MAX_LINE_LENGTH+9
 
     ; operations_count = 0;
     mov dword [$operations_count], 0
@@ -269,11 +269,11 @@ myCalc: ; myCalc(): int
         lea eax, [$buf]
         func_call [$p_last_char], str_last_char, eax
 
-        ; if (*p_last_char != '\n') goto act;
-        cmp byte [$p_last_char], NEW_LINE_TERMINATOR
+        ; if (*p_last_char == '\n') *p_last_char = '\0';
+        mov eax, dword [$p_last_char]
+        cmp byte [eax], NEW_LINE_TERMINATOR
         jne .act
-        mov byte [$p_last_char], NULL_TERMINATOR
-        jmp .act
+        mov byte [eax], NULL_TERMINATOR
 
         .act:
         ; c = buf[0]
@@ -359,7 +359,6 @@ print_top_stack_number: ; print_number_stack_top(): void
     func_call eax, print_big_integer, [$n]
     ; free(n);
     func_call eax, BigInteger_free, [$n]
-    jmp .exit
 
     .exit:
     func_exit
@@ -387,8 +386,6 @@ push_top_stack_number_hex_digits_amount: ; print_number_stack_top_hex_digits_len
     ; free(n);
     func_call eax, BigInteger_free, [$n]
 
-    jmp .exit
-
     .exit:
     func_exit
     %pop
@@ -414,7 +411,6 @@ duplicate_top_stack_number: ; duplicate_top_stack_number(): void
     func_call [$n_dup], BigInteger_duplicate, [$n]
     ; push(NumbersStack, n_dup);
     func_call eax, BigIntegerStack_push, [NumbersStack], [$n_dup]
-    jmp .exit
 
     .exit:
     func_exit
@@ -446,7 +442,6 @@ add_two_top_of_stack: ; add_two_top_of_stack(): void
     func_call eax, BigInteger_free, [$n1]
     ; free(n2);
     func_call eax, BigInteger_free, [$n2]
-    jmp .exit
 
     .exit:
     func_exit
@@ -478,7 +473,6 @@ and_two_top_of_stack: ; and_two_top_of_stack(): void
     func_call eax, BigInteger_free, [$n1]
     ; free(n2);
     func_call eax, BigInteger_free, [$n2]
-    jmp .exit
 
     .exit:
     func_exit
@@ -510,7 +504,6 @@ or_two_top_of_stack: ; or_two_top_of_stack(): void
     func_call eax, BigInteger_free, [$n1]
     ; free(n2);
     func_call eax, BigInteger_free, [$n2]
-    jmp .exit
 
     .exit:
     func_exit
@@ -529,7 +522,7 @@ parse_push_big_integer: ; parse_push_big_integer(char *s): void
     ; n = BigInteger.parse(s);
     func_call [$n], BigInteger_parse, [$s]
 
-    ; if (n) goto push_num;
+    ; if (n) goto number_parsed_successful;
     cmp dword [$n], NULL
     jne .number_parsed_successful
     printf_line "The input is not a hex number"
@@ -589,42 +582,42 @@ set_run_settings_from_args: ; set_run_settings_from_args(int argc, char *argv[])
 
     mov dword [$i], 1
     .args_loop: ; for(i = 1; i < argc; i++)
-    ; if (i >= argc) break;
-    mov eax, dword [$argc]
-    cmp dword [$i], eax
-    jge .args_loop_end
-    
-    ; arg = argv[i];
-    mov eax, dword [$argv]
-    mov ebx, dword [$i]
-    mem_mov ecx, [$arg], [eax+4*ebx]
-
-    .check_dbg:
-    ; is_match = is_arg_dbg(arg);
-    func_call [$is_match], is_arg_debug, [$arg]
-    ; if (!is_match) goto check_stack_size;
-    cmp dword [$is_match], FALSE
-    je .check_stack_size
-    ; DebugMode = TRUE;
-    mov dword [DebugMode], TRUE
-    ; continue;
-    jmp .continue
-
-    .check_stack_size:
-        ; stack_size = try_parse_arg_hex_string_num(arg);
-        func_call [$stack_size], try_parse_arg_hex_string_num, [$arg]
-        ; if (stack_size < 0) continue; (invalid hex number)
-        cmp dword [$stack_size], 0
-        jl .continue
+        ; if (i >= argc) break;
+        mov eax, dword [$argc]
+        cmp dword [$i], eax
+        jge .args_loop_end
         
-        ; NumbersStackCapacity = stack_size;
-        mem_mov eax, [NumbersStackCapacity], [$stack_size]
-        jmp .continue
+        ; arg = argv[i];
+        mov eax, dword [$argv]
+        mov ebx, dword [$i]
+        mem_mov ecx, [$arg], [eax+4*ebx]
 
-    .continue:
-    ; i++
-    inc dword [$i]
-    jmp .args_loop
+        .check_dbg:
+            ; is_match = is_arg_dbg(arg);
+            func_call [$is_match], is_arg_debug, [$arg]
+            ; if (!is_match) goto check_stack_size;
+            cmp dword [$is_match], FALSE
+            je .check_stack_size
+            ; DebugMode = TRUE;
+            mov dword [DebugMode], TRUE
+            ; continue;
+            jmp .continue
+
+        .check_stack_size:
+            ; stack_size = try_parse_arg_hex_string_num(arg);
+            func_call [$stack_size], try_parse_arg_hex_string_num, [$arg]
+            ; if (stack_size < 0) continue; (invalid hex number)
+            cmp dword [$stack_size], 0
+            jl .continue
+            
+            ; NumbersStackCapacity = stack_size;
+            mem_mov eax, [NumbersStackCapacity], [$stack_size]
+            jmp .continue
+
+        .continue:
+        ; i++
+        inc dword [$i]
+        jmp .args_loop
     .args_loop_end:
 
     func_exit
@@ -754,10 +747,6 @@ str_last_char: ; str_last_char(char *s): char*
     dec dword [$pc]
     func_exit [$pc]
     %pop
-
-%unmacro cmp_char 4
-%unmacro cmp_char 3
-%unmacro cmp_char_in_range 4
 
 ;------------------- class BigIntegerStack -------------------
 %ifdef COMMENT
