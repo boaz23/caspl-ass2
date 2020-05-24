@@ -373,7 +373,7 @@ ByteLink_duplicate: ; duplicate(ByteLink *list): ByteLink*
     func_exit [$duplist]
     %pop
 
-ByteLink_addAtStart: ; addAtStart(ByteLink** list, byte b): void
+ByteLink_addAtStart: ; ByteLink_addAsNext(ByteLink** list, byte b): void
     %push
     ; ----- arguments -----
     %define $list ebp+8
@@ -396,18 +396,74 @@ ByteLink_addAtStart: ; addAtStart(ByteLink** list, byte b): void
     func_exit
     %pop
 
-ByteLink_addAsNext: ; addAsNext(ByteLink *link, byte b): ByteLink*
+ByteLink_addAsNext: ; ByteLink_addAsNext(ByteLink *link, byte b): ByteLink*
     %push
     ; ----- arguments -----
     %define $link ebp+8
     %define $b ebp+12
     ; ----- locals -----
+    %define $b_link ebp-4
     ; ----- body ------
+    func_entry 4
 
+    ;b_link = ByteLink_ctor(b, NULL)
+    func_call [$b_link], ByteLink_ctor, [$b], NULL
+
+    ;link->next = b_link
+    mov eax, dword [$link]
+    mem_mov ebx, [ByteLink_next(eax)], [$b_link]
+
+    func_exit [$b_link]
+    %pop
+
+; assume there is a next, dont remove the start link
+ByteLink_setPrevLinkNull: ; setPrevLinkNull(ByteLink* list, ByteLink* link): int
+    %push
+    ; ----- arguments -----
+    %define $list ebp+8
+    %define $link ebp+12
+    ; ----- locals ------
+    %define $current ebp-4
+    %define $lenUpTo ebp-8
+    ; ----- body ------
+    func_entry 8
+
+    ;current = list
+    mem_mov eax, [$current], [$list]
+
+    ;lenUpTo = 0
+    mov dword [$lenUpTo], 0
+
+    ;while(currnet != NULL)
+    .set_null_loop_start:
+        cmp dword [$current], 0
+        je .set_null_loop_end
+
+        ;lenUpTo = lenUpTo + 1
+        inc dword [$lenUpTo]
+
+        ;if(currnet->next == link)
+        mov eax, dword [$current]
+        mov eax, dword [ByteLink_next(eax)]
+        mov ebx, dword [$link]
+        ;TODO check jne
+        cmp eax, ebx
+        jne .set_next_current
+            mov eax, [$current]
+            mov dword [ByteLink_next(eax)], 0
+            jmp .set_null_loop_end
+    
+    .set_next_current:
+        mov eax, dword [$current]
+        mem_mov eax, [$current], [ByteLink_next(eax)]
+        jmp .set_null_loop_start
+
+    .set_null_loop_end:
+
+    func_exit [$lenUpTo]
     %pop
 
 ;------------------- class BigInteger -------------------
-; TODO: maintain list_len instead of the amount of hex digits
 %ifdef COMMENT
 ;class BigInteger {
 ;    ByteLink* list;
@@ -453,8 +509,8 @@ BigInteger_ctor: ; ctor(ByteLink* list, int list_len): BigInteger*
     ;b_integer->list = list
     mem_mov ebx, [BigInteger_list(eax)], [$list]
 
-    ;b_integer->hexDigitsLen = hexDigitsLen
-    mem_mov ebx, [BigInteger_list_len(eax)], [$hexDigitsLen]
+    ;b_integer->list_len = list_len
+    mem_mov ebx, [BigInteger_list_len(eax)], [$list_len]
 
 
     func_exit [$b_integer]
@@ -466,7 +522,7 @@ BigInteger_duplicate: ; duplicate(BigInteger* n): BigInteger*
     %define $n ebp+8
     ; ----- locals ------
     %define $b_integer ebp-4
-    %define $hexDigitsLength ebp-8
+    %define $list_len ebp-8
     %define $duplist ebp-12
     ; ----- body ------
     func_entry 12
@@ -478,12 +534,12 @@ BigInteger_duplicate: ; duplicate(BigInteger* n): BigInteger*
     ;duplist = ByteLink_duplicate(n->list)
     func_call [$duplist], ByteLink_duplicate, eax
     
-    ;hexDigitsLength = n->hexDigitsLength
+    ;list_len = n->list_len
     mov eax, [$n]
-    mem_mov ebx, [$hexDigitsLength], [BigInteger_list_len(eax)]
+    mem_mov ebx, [$list_len], [BigInteger_list_len(eax)]
     
-    ;b_integer = BigInteger_ctor(duplist, hexDigitsLength)
-    func_call [$b_integer], BigInteger_ctor, [$duplist], [$hexDigitsLength]
+    ;b_integer = BigInteger_ctor(duplist, list_len)
+    func_call [$b_integer], BigInteger_ctor, [$duplist], [$list_len]
 
 
     func_exit [$b_integer]
@@ -528,23 +584,6 @@ BigInteger_calcHexDigitsInteger: ; calcHexDigitsInteger(BigInteger* n): BigInteg
     func_exit
     %pop
 
-; TODO: check if needed to be removed
-BigInteger_getHexDigitsLen: ; getHexDigitsLen(BigInteger* n): int
-    %push
-    ; ----- arguments -----
-    %define $n ebp+8
-    ; ----- locals ------
-    %define $len ebp-4
-    ; ----- body ------
-    func_entry 4
-
-    mov ebx, dword [$n]
-    mov eax, [BigInteger_hexDigitsLength(ebx)]
-    mov dword [$len], eax
-
-    func_exit [$len]
-    %pop
-
 BigInteger_getlistLen: ; getHexDigitsLen(BigInteger* n): int
     %push
     ; ----- arguments -----
@@ -555,18 +594,7 @@ BigInteger_getlistLen: ; getHexDigitsLen(BigInteger* n): int
     func_entry 4
 
     mov ebx, dword [$n]
-    mov eax, [BigInteger_hexDigitsLength(ebx)]
-
-    ; if eax is even ret eax else ret eax + 1
-    ; eax = eax /2 = BigInteger_hexDigitsLength / 2
-    mov edx, 0
-    mov ecx, 2
-    div ecx
-
-    cmp edx, 0
-    je .ret_eax
-        add eax, 1
-    .ret_eax:
+    mov eax, [BigInteger_list_len(ebx)]
     mov dword [$len], eax
 
     func_exit [$len]
@@ -578,8 +606,147 @@ BigInteger_add: ; add(BigInteger* n1, BigInteger* n2): BigInteger*
     %define $n1 ebp+8
     %define $n2 ebp+12
     ; ----- locals ------
+    %define $Addedlist ebp-4
+    %define $currentAddedLink ebp-8
+    %define $currentShorter ebp-12
+    %define $currentLonger ebp-16
+    %define $saveflags ebp-20
+    %define $resBigInt ebp-24
+    %define $resLen ebp-28
     ; ----- body ------
+    func_entry 28
 
+    ;resLen = 0
+    mov dword [$resLen], 0
+
+    ;set currentShorter and currentLonger
+    mov eax, [$n1]
+    mov eax, dword [BigInteger_list_len(eax)]
+
+    mov ebx, [$n2]
+    mov ebx, dword [BigInteger_list_len(ebx)]
+
+    cmp eax, ebx
+    jl .set_n2_as_longer
+        mov eax, dword [$n1]
+        mem_mov ecx, [$currentLonger], [BigInteger_list(eax)]
+        mov eax, dword [$n2]
+        mem_mov ecx, [$currentShorter], [BigInteger_list(eax)]
+        jmp .set_n1_as_longer_c
+    .set_n2_as_longer:
+        mov eax, dword [$n2]
+        mem_mov ecx, [$currentLonger], [BigInteger_list(eax)]
+        mov eax, dword [$n1]
+        mem_mov ecx, [$currentShorter], [BigInteger_list(eax)]
+    .set_n1_as_longer_c:
+
+    mov dword [$saveflags], 0
+    ;currentAddedLink = ByteLink_ctor(currentShorter.b + currentLonger.b, NULL)
+    ; cl = currentShorter->b
+    mov ecx, dword [$currentShorter]
+    mov cl, byte [ByteLink_b(ecx)]
+
+    ; bl = currentShorter->b
+    mov ebx, dword [$currentLonger]
+    mov bl, byte [ByteLink_b(ebx)]
+
+    ; cl = cl + bl
+    ; save flags
+    add cl, bl
+    lahf
+    mov [$saveflags], ah
+    func_call [$currentAddedLink], ByteLink_ctor, ecx, NULL
+    mem_mov ecx, [$Addedlist], [$currentAddedLink]
+
+    ;currents to next
+    mov ecx, dword [$currentShorter]
+    mem_mov ebx, [$currentShorter], [ByteLink_next(ecx)]
+
+    mov ecx, dword [$currentLonger]
+    mem_mov ebx, [$currentLonger], [ByteLink_next(ecx)]
+
+    ;resLen = resLen + 1
+    inc dword [$resLen]
+    ;while(currentShorter != NULL)
+    .add_with_short_loop_start:
+        cmp dword [$currentShorter], 0
+        je .add_with_short_loop_end
+
+        ; cl = currentShorter->b
+        mov ecx, dword [$currentShorter]
+        mov cl, byte [ByteLink_b(ecx)]
+
+        ; bl = currentShorter->b
+        mov ebx, dword [$currentLonger]
+        mov bl, byte [ByteLink_b(ebx)]
+
+        ;restore status register flags
+        mov ah, [$saveflags]
+        sahf
+        ;cl = cl + bl = currentShorter->b + currentShorter->b + carray
+        adc cl, bl
+        ;save flags
+        lahf
+        mov [$saveflags], ah
+
+        ;currentAddedLink = ByteLink_AddAsLast(currentAddedLink, currentShorter.b add with carray currentLonger.b)
+        func_call [$currentAddedLink], ByteLink_addAsNext, [$currentAddedLink], ecx
+
+        ;currents to next
+        mov ecx, dword [$currentShorter]
+        mem_mov ebx, [$currentShorter], [ByteLink_next(ecx)]
+
+        mov ecx, dword [$currentLonger]
+        mem_mov ebx, [$currentLonger], [ByteLink_next(ecx)]
+        jmp .add_with_short_loop_start
+
+    .add_with_short_loop_end:
+
+    ;while(currentLonger != NULL)
+    .add_with_long_loop_start:
+        cmp dword [$currentLonger], 0
+        je .add_with_long_loop_end
+
+        mov ecx, 0
+        ; bl = currentShorter->b
+        mov ebx, dword [$currentLonger]
+        mov bl, byte [ByteLink_b(ebx)]
+
+        ;restore status register flags
+        mov ah, [$saveflags]
+        sahf
+        ;cl = cl + bl = currentShorter->b + currentShorter->b + carray
+        adc cl, bl
+        ;save flags
+        lahf
+        mov [$saveflags], ah
+
+        ;resHexDgits = resHexDgits + 1
+        inc dword [$resLen]
+
+        ;currentAddedLink = ByteLink_AddAsLast(currentAddedLink, currentLonger.b add with carray 0)
+        func_call [$currentAddedLink], ByteLink_addAsNext, [$currentAddedLink], ecx
+
+        ;current longer next
+        mov ecx, dword [$currentLonger]
+        mem_mov ebx, [$currentLonger], [ByteLink_next(ecx)]
+        jmp .add_with_long_loop_start
+
+    .add_with_long_loop_end:
+
+    ;Check if carray flag is set
+    mov ah, [$saveflags]
+    sahf
+    jnc .add_build_BigInt
+    ; if carray flag is set, add 1 to the list
+    mov ecx, 1
+    func_call [$currentAddedLink], ByteLink_addAsNext, [$currentAddedLink], ecx
+    inc dword [$resLen]
+
+    .add_build_BigInt:
+    func_call [$resBigInt], BigInteger_ctor, [$Addedlist], [$resLen]
+
+    func_exit [$resBigInt]
     %pop
 
 BigInteger_and: ; and(BigInteger* n1, BigInteger* n2): BigInteger*
@@ -617,8 +784,65 @@ BigInteger_removeLeadingZeroes: ; removeLeadingZeroes(BigInteger* n): void
     ; ----- arguments -----
     %define $n ebp+8
     ; ----- locals ------
+    %define $linkToRemove ebp-4
+    %define $current ebp-8
     ; ----- body ------
+    func_entry 8
 
+    ;linkToRemove = NULL
+    mov dword [$linkToRemove], NULL
+
+    ;current = n->list
+    mov eax, [$n]
+    mem_mov eax, [$current], [BigInteger_list(eax)]
+
+    ;if(current->next == NULL), the list have only one link, ret
+    mov eax, [$current]
+    mov eax, [ByteLink_next(eax)]
+    cmp eax, 0
+    je .func_ret
+    
+    ;while(current != NULL)
+    .r_loop_start:
+        cmp dword [$current], 0
+        je .r_loop_end
+
+        ;if(current->b == 0)
+        mov ebx, 0
+        mov eax , dword [$current]
+        mov bl, byte [ByteLink_b(eax)]
+        cmp ebx, 0
+        jne .current_b_not_z
+            ;if(linkToRemove == 0) set linkToRemove = current
+            cmp dword [$linkToRemove], 0
+            jne .set_current_next
+                mem_mov eax, [$linkToRemove], [$current]
+                jmp .set_current_next
+        
+        ;else set linkToRemove = 0
+        .current_b_not_z:
+            mov dword [$linkToRemove], 0
+        
+        .set_current_next:
+            mov eax, dword [$current]
+            mem_mov eax, [$current], [ByteLink_next(eax)]
+            jmp .r_loop_start
+    .r_loop_end:
+
+    cmp dword [$linkToRemove], 0
+    je .func_ret
+        mov ebx, dword [$n]
+        func_call eax, ByteLink_setPrevLinkNull, [BigInteger_list(ebx)], [$linkToRemove]
+       
+        ;set BigInt list len to the return value from ByteLink_setPrevLinkNull
+        mov ebx, dword [$n]
+        mem_mov ecx, [BigInteger_list_len(ebx)], eax
+
+        func_call eax, ByteLink_freeList, [$linkToRemove]
+    
+    .func_ret:
+
+    func_exit
     %pop
 
 BigInteger_shiftLeft: ; shiftLeft(BigInteger* n, int amount): void
@@ -638,17 +862,17 @@ BigInteger_toString: ; toString(BigInteger* n): char*
     ; ----- locals ------
     %define $str ebp-4
     %define $strSize ebp-8
-    %define $hex_len ebp-12
+    %define $list_len ebp-12
     %define $index ebp-16
     %define $tmpBigInt ebp-20
     %define $rs ebp-24
     ; ----- body ------
     func_entry 24
 
-    ; strSize = BigInteger_getHexDigitsLen(n) + 1
+    ; strSize = BigInteger_getHexDigitsLen(n)*2 + 1
     ; str = calloc(strSize ,1)
-    func_call [$hex_len], BigInteger_getlistLen, [$n]
-    mov ebx, dword [$hex_len]
+    func_call [$list_len], BigInteger_getlistLen, [$n]
+    mov ebx, dword [$list_len]
     shl ebx, 1
     mov dword [$strSize], ebx
     add ebx, 1
@@ -659,15 +883,15 @@ BigInteger_toString: ; toString(BigInteger* n): char*
     mov ebx, dword [$n]
     mov eax, [ebx]
     mov dword [$tmpBigInt], eax
-;
+
     ;while(index < strSize) write in str the hex in the link
     mov dword [$index], 0
     .set_str_start:
        
         mov ebx, dword [$tmpBigInt]
-    ;    ; ebx = ebx->b = n->list->b
+        ; ebx = ebx->b = n->list->b
         mov al, byte [ByteLink_b(ebx)]
-;
+
         ;00001111
         mov ebx, 0
         mov bl, al
@@ -678,7 +902,7 @@ BigInteger_toString: ; toString(BigInteger* n): char*
         ; index = index + 1
         add dword [$index], 1
         mov ecx, dword [$index]
-;
+
         mov ebx, 0
         mov bl, al
         and bl, 0xF0
@@ -686,7 +910,7 @@ BigInteger_toString: ; toString(BigInteger* n): char*
         mov ecx, dword [$index]
         add ecx, dword [$str]
         func_call [$rs], insertByteAsHexToStringR, ecx ,ebx
-;
+
         ; index = index + 1
         add dword [$index], 1
         ; tmpBigInt = tmpBigInt->list->next
@@ -697,9 +921,9 @@ BigInteger_toString: ; toString(BigInteger* n): char*
         mov ebx, dword [$strSize]
         cmp ecx, ebx
         jl .set_str_start
-;
+
     .set_str_end:
-;
+
     ;if(str[strSize] == '0') set it to null byte
     mov ebx, [$str]
     add ebx, [$strSize]
