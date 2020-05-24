@@ -759,12 +759,31 @@ BigIntegerStack_ctor: ; ctor(int capacity): BigInteger*
     ; ----- arguments -----
     %define $capacity ebp+8
     ; ----- locals -----
+    %define $s ebp-4
+    %define $n_arr_bytes_size ebp-8
+    %define $n_arr ebp-12
     ; ----- body ------
-    func_entry 4
-    
-    func_call [ebp-4], malloc, sizeof_BigIntegerStack
+    func_entry 12
 
-    func_exit [ebp-4]
+    ; n_arr_bytes_size = capacity;
+    mem_mov eax, [$n_arr_bytes_size], [$capacity]
+    ; n_arr_bytes_size *= 4;
+    shl dword [$n_arr_bytes_size], 2
+    ; n_arr = malloc(n_arr_bytes_size);
+    func_call [$n_arr], malloc, [$n_arr_bytes_size]
+    
+    ; s = malloc(sizeof(BigIntegerStack))
+    func_call [$s], malloc, sizeof_BigIntegerStack
+    mov eax, [$s]
+
+    ; s->numbers = n_arr;
+    mem_mov ebx, [BigIntegerStack_numbers(eax)], [$n_arr]
+    ; s->capacity = capacity;
+    mem_mov ebx, [BigIntegerStack_capacity(eax)], [$capacity]
+    ; s->sp = 0;
+    mov dword [BigIntegerStack_sp(eax)], -1
+
+    func_exit [$s]
     %pop
 
 BigIntegerStack_free: ; free(BigIntegerStack* s): void
@@ -773,13 +792,16 @@ BigIntegerStack_free: ; free(BigIntegerStack* s): void
     %define $s ebp+8
     ; ----- locals -----
     ; ----- body ------
-    func_entry 4
+    func_entry
 
-    ; free(n)
+    ; free(s->numbers);
+    mov eax, [$s]
+    func_call eax, free, [BigIntegerStack_numbers(eax)]
+
+    ; free(s);
     func_call eax, free, [$s]
-    mov dword [ebp-4], 0
 
-    func_exit [ebp-4]
+    func_exit
     %pop
 
 BigIntegerStack_push: ; push(BigStackInteger* s, BigInteger* n): void
@@ -789,12 +811,21 @@ BigIntegerStack_push: ; push(BigStackInteger* s, BigInteger* n): void
     %define $n ebp+12
     ; ----- locals -----
     ; ----- body ------
-    func_entry 4
+    func_entry
     
-    dbg_print_big_integer [$n], "Pushed number: "
-    func_call eax, free, [$n]
+    ; s->sp++;
+    mov eax, [$s]
+    inc dword [BigIntegerStack_sp(eax)]
 
-    func_exit [ebp-4]
+    ; s->numbers[s->sp] = n;
+    mov eax, [$s]
+    mov ebx, [BigIntegerStack_numbers(eax)]
+    mov eax, [BigIntegerStack_sp(eax)]
+    mem_mov ecx, [ebx+4*eax], [$n]
+
+    dbg_print_big_integer [$n], "Pushed number: "
+
+    func_exit
     %pop
 
 BigIntegerStack_pop: ; pop(BigStackInteger* s): BigInteger*
@@ -802,12 +833,18 @@ BigIntegerStack_pop: ; pop(BigStackInteger* s): BigInteger*
     ; ----- arguments -----
     %define $s ebp+8
     ; ----- locals -----
+    %define $n ebp-4
     ; ----- body ------
     func_entry 4
 
-    func_call [ebp-4], malloc, sizeof_BigInteger
+    ; n = BigIntegerStack.peek(s);
+    func_call [$n], BigIntegerStack_peek, [$s]
+    
+    ; s->sp--;
+    mov eax, [$s]
+    dec dword [BigIntegerStack_sp(eax)]
 
-    func_exit [ebp-4]
+    func_exit [$n]
     %pop
 
 BigIntegerStack_peek: ; peek(BigStackInteger* s): BigInteger*
@@ -815,12 +852,17 @@ BigIntegerStack_peek: ; peek(BigStackInteger* s): BigInteger*
     ; ----- arguments -----
     %define $s ebp+8
     ; ----- locals -----
+    %define $n ebp-4
     ; ----- body ------
     func_entry 4
 
-    mov dword [ebp-4], 0
+    ; n = s->numbers[s->sp]
+    mov eax, [$s]
+    mov ebx, [BigIntegerStack_numbers(eax)]
+    mov eax, [BigIntegerStack_sp(eax)]
+    mem_mov ecx, [$n], [ebx+4*eax]
 
-    func_exit [ebp-4]
+    func_exit [$n]
     %pop
 
 
@@ -830,12 +872,29 @@ BigIntegerStack_hasAtLeastItems: ; hasAtLeastItems(BigStackInteger* s, int amoun
     %define $s ebp+8
     %define $amount ebp+12
     ; ----- locals -----
+    %define $enough_for_pop ebp-4
     ; ----- body ------
     func_entry 4
     
-    mov dword [ebp-4], TRUE
+    ; eax = s->sp;
+    mov eax, dword [$s]
+    mov eax, dword [BigIntegerStack_sp(eax)]
 
-    func_exit [ebp-4]
+    ; if (s->sp < amount) goto less_items;
+    cmp eax, dword [$amount]
+    jl .less_items
+
+    .enough:
+        ; enough_for_pop = true;
+        mov dword [$enough_for_pop], TRUE
+        jmp .exit
+    .less_items:
+        ; enough_for_pop = false;
+        mov dword [$enough_for_pop], FALSE
+        jmp .exit
+
+    .exit:
+    func_exit [$enough_for_pop]
     %pop
     
 BigIntegerStack_isFull: ; isFull(BigStackInteger* s): boolean
@@ -843,12 +902,29 @@ BigIntegerStack_isFull: ; isFull(BigStackInteger* s): boolean
     ; ----- arguments -----
     %define $s ebp+8
     ; ----- locals -----
+    %define $is_full ebp-4
     ; ----- body ------
     func_entry 4
     
-    mov dword [ebp-4], FALSE
+    ; eax = s; ebx = s->sp;
+    mov eax, dword [$s]
+    mov ebx, dword [BigIntegerStack_sp(eax)]
 
-    func_exit [ebp-4]
+    ; if (s->sp < s->capacity) goto less_items;
+    cmp ebx, dword [BigIntegerStack_capacity(eax)]
+    jl .free
+
+    .full:
+        ; enough_for_pop = true;
+        mov dword [$enough_for_pop], FALSE
+        jmp .exit
+    .free:
+        ; enough_for_pop = false;
+        mov dword [$enough_for_pop], TRUE
+        jmp .exit
+
+    .exit:
+    func_exit [$is_full]
     %pop
 
 ;------------------- class ByteLink -------------------
