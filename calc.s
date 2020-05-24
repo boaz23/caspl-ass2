@@ -252,7 +252,7 @@ main: ; main(int argc, char *argv[], char *envp[]): int
 %macro dbg_print_big_integer 1-*
     ; if (DebugMode) print_big_integer(n);
     cmp dword [DebugMode], FALSE
-    jne %%else
+    je %%else
     ; print info
     %if %0-1
         printf_inline %{2:-1}
@@ -736,26 +736,33 @@ sizeof_BigIntegerStack EQU 12
 %define BigIntegerStack_capacity(s) s+4
 %define BigIntegerStack_sp(s) s+8
 
+; TODO: delete this mock code and actually implement
 BigIntegerStack_ctor: ; ctor(int capacity): BigInteger*
     %push
     ; ----- arguments -----
     %define $capacity ebp+8
     ; ----- locals -----
     ; ----- body ------
-    func_entry
+    func_entry 4
+    
+    func_call [ebp-4], malloc, sizeof_BigIntegerStack
 
-    func_exit
+    func_exit [ebp-4]
     %pop
 
 BigIntegerStack_free: ; free(BigIntegerStack* s): void
     %push
     ; ----- arguments -----
-    %define $capacity ebp+8
+    %define $s ebp+8
     ; ----- locals -----
     ; ----- body ------
-    func_entry
+    func_entry 4
 
-    func_exit
+    ; free(n)
+    func_call eax, free, [$s]
+    mov dword [ebp-4], 0
+
+    func_exit [ebp-4]
     %pop
 
 BigIntegerStack_push: ; push(BigStackInteger* s, BigInteger* n): void
@@ -765,11 +772,12 @@ BigIntegerStack_push: ; push(BigStackInteger* s, BigInteger* n): void
     %define $n ebp+12
     ; ----- locals -----
     ; ----- body ------
-    func_entry
+    func_entry 4
     
     dbg_print_big_integer [$n], "Pushed number: "
+    mov dword [ebp-4], 0
 
-    func_exit
+    func_exit [ebp-4]
     %pop
 
 BigIntegerStack_pop: ; pop(BigStackInteger* s): BigInteger*
@@ -778,9 +786,11 @@ BigIntegerStack_pop: ; pop(BigStackInteger* s): BigInteger*
     %define $s ebp+8
     ; ----- locals -----
     ; ----- body ------
-    func_entry
+    func_entry 4
 
-    func_exit
+    func_call [ebp-4], malloc, sizeof_BigInteger
+
+    func_exit [ebp-4]
     %pop
 
 BigIntegerStack_peek: ; peek(BigStackInteger* s): BigInteger*
@@ -789,9 +799,11 @@ BigIntegerStack_peek: ; peek(BigStackInteger* s): BigInteger*
     %define $s ebp+8
     ; ----- locals -----
     ; ----- body ------
-    func_entry
+    func_entry 4
 
-    func_exit
+    func_call [ebp-4], malloc, sizeof_BigInteger
+
+    func_exit [ebp-4]
     %pop
 
 
@@ -802,9 +814,11 @@ BigIntegerStack_hasAtLeastItems: ; hasAtLeastItems(BigStackInteger* s, int amoun
     %define $amount ebp+12
     ; ----- locals -----
     ; ----- body ------
-    func_entry
+    func_entry 4
+    
+    mov dword [ebp-4], TRUE
 
-    func_exit
+    func_exit [ebp-4]
     %pop
     
 BigIntegerStack_isFull: ; isFull(BigStackInteger* s): boolean
@@ -813,9 +827,11 @@ BigIntegerStack_isFull: ; isFull(BigStackInteger* s): boolean
     %define $s ebp+8
     ; ----- locals -----
     ; ----- body ------
-    func_entry
+    func_entry 4
+    
+    mov dword [ebp-4], FALSE
 
-    func_exit
+    func_exit [ebp-4]
     %pop
 
 ;------------------- class ByteLink -------------------
@@ -1015,96 +1031,77 @@ sizeof_BigInteger EQU 8
 %define BigInteger_list(n) n+0
 %define BigInteger_list_len(n) n+4
 
+; TODO: delete this mock code and actually implement
 BigInteger_ctor: ; ctor(ByteLink* list, int list_len): BigInteger*
     %push
     ; ----- arguments -----
     %define $list ebp+8
     %define $list_len ebp+12
     ; ----- locals ------
-    %define $b_integer ebp-4
     ; ----- body ------
     func_entry 4
 
-    ; eax = b_integer = malloc(sizeof(ByteLink));
-    func_call [$b_integer], malloc, sizeof_BigInteger
-    mov eax, dword [$b_integer]
+    func_call [ebp-4], malloc, sizeof_BigInteger
 
-    ;b_integer->list = list
-    mem_mov ebx, [BigInteger_list(eax)], [$list]
-
-    ;b_integer->hexDigitsLen = hexDigitsLen
-    mem_mov ebx, [BigInteger_list_len(eax)], [$list_len]
-
-
-    func_exit [$b_integer]
+    func_exit [ebp-4]
     %pop
 
+; TODO: delete this mock code and actually implement
 BigInteger_duplicate: ; duplicate(BigInteger* n): BigInteger*
     %push
     ; ----- arguments -----
     %define $n ebp+8
     ; ----- locals ------
-    %define $b_integer ebp-4
-    %define $hexDigitsLength ebp-8
-    %define $duplist ebp-12
     ; ----- body ------
-    func_entry 12
-    
-    ;eax =  n->list
-    mov eax, [$n]
-    mov eax, [BigInteger_list(eax)]
+    func_entry 4
 
-    ;duplist = ByteLink_duplicate(n->list)
-    func_call [$duplist], ByteLink_duplicate, eax
-    
-    ;hexDigitsLength = n->hexDigitsLength
-    mov eax, [$n]
-    mem_mov ebx, [$hexDigitsLength], [BigInteger_list_len(eax)]
-    
-    ;b_integer = BigInteger_ctor(duplist, hexDigitsLength)
-    func_call [$b_integer], BigInteger_ctor, [$duplist], [$hexDigitsLength]
+    func_call [ebp-4], malloc, sizeof_BigInteger
 
-
-    func_exit [$b_integer]
+    func_exit [ebp-4]
     %pop
 
+; TODO: delete this mock code and actually implement
 BigInteger_free: ; free(BigInteger* n): void
     %push
     ; ----- arguments -----
     %define $n ebp+8
     ; ----- locals ------
     ; ----- body ------
-    func_entry
-    
-    ; ByteLink_freeList(n->list)
-    mov eax, dword [$n]
-    mov ebx, [BigInteger_list(eax)]
-    func_call eax, ByteLink_freeList, ebx
+    func_entry 4
 
     ; free(n)
     func_call eax, free, [$n]
+    mov dword [ebp-4], 0
 
-    func_exit
+    func_exit [ebp-4]
     %pop
 
+; TODO: delete this mock code and actually implement
 BigInteger_parse: ; parse(char *s): BigInteger*
     %push
     ; ----- arguments -----
     %define $s ebp+8
     ; ----- locals ------
     ; ----- body ------
+    func_entry 4
 
+    func_call [ebp-4], malloc, sizeof_BigInteger
+
+    func_exit [ebp-4]
     %pop
 
+; TODO: delete this mock code and actually implement
 BigInteger_calcHexDigitsInteger: ; calcHexDigitsInteger(BigInteger* n): BigInteger*
     %push
     ; ----- arguments -----
     %define $n ebp+8
     ; ----- locals ------
     ; ----- body ------
-    func_entry
+    func_entry 4
 
-    func_exit
+    func_call [ebp-4], malloc, sizeof_BigInteger
+
+    func_exit [ebp-4]
     %pop
 
 BigInteger_getlistLen: ; getHexDigitsLen(BigInteger* n): int
@@ -1116,6 +1113,7 @@ BigInteger_getlistLen: ; getHexDigitsLen(BigInteger* n): int
     
     %pop
 
+; TODO: delete this mock code and actually implement
 BigInteger_add: ; add(BigInteger* n1, BigInteger* n2): BigInteger*
     %push
     ; ----- arguments -----
@@ -1123,9 +1121,14 @@ BigInteger_add: ; add(BigInteger* n1, BigInteger* n2): BigInteger*
     %define $n2 ebp+12
     ; ----- locals ------
     ; ----- body ------
+    func_entry 4
 
+    func_call [ebp-4], malloc, sizeof_BigInteger
+
+    func_exit [ebp-4]
     %pop
 
+; TODO: delete this mock code and actually implement
 BigInteger_and: ; and(BigInteger* n1, BigInteger* n2): BigInteger*
     %push
     ; ----- arguments -----
@@ -1133,9 +1136,14 @@ BigInteger_and: ; and(BigInteger* n1, BigInteger* n2): BigInteger*
     %define $n2 ebp+12
     ; ----- locals ------
     ; ----- body ------
+    func_entry 4
 
+    func_call [ebp-4], malloc, sizeof_BigInteger
+
+    func_exit [ebp-4]
     %pop
 
+; TODO: delete this mock code and actually implement
 BigInteger_or: ; or(BigInteger* n1, BigInteger* n2): BigInteger*
     %push
     ; ----- arguments -----
@@ -1143,7 +1151,11 @@ BigInteger_or: ; or(BigInteger* n1, BigInteger* n2): BigInteger*
     %define $n2 ebp+12
     ; ----- locals ------
     ; ----- body ------
+    func_entry 4
 
+    func_call [ebp-4], malloc, sizeof_BigInteger
+
+    func_exit [ebp-4]
     %pop
 
 BigInteger_multiply: ; multiply(BigInteger* n1, BigInteger* n2): BigInteger*
@@ -1175,90 +1187,21 @@ BigInteger_shiftLeft: ; shiftLeft(BigInteger* n, int amount): void
 
     %pop
 
+; TODO: delete this mock code and actually implement
 BigInteger_toString: ; toString(BigInteger* n): char*
     %push
     ; ----- arguments -----
     %define $n ebp+8
     ; ----- locals ------
-    %define $str ebp-4
-    %define $strSize ebp-8
-    %define $hex_len ebp-12
-    %define $index ebp-16
-    %define $tmpBigInt ebp-20
-    %define $rs ebp-24
     ; ----- body ------
-    func_entry 24
+    func_entry 4
+    
+    func_call eax, malloc, 2
+    mov byte [eax+0], '0'
+    mov byte [eax+1], 0
+    mov [ebp-4], eax
 
-    ; strSize = BigInteger_getHexDigitsLen(n) + 1
-    ; str = calloc(strSize ,1)
-    func_call [$hex_len], BigInteger_getlistLen, [$n]
-    mov ebx, dword [$hex_len]
-    shl ebx, 1
-    mov dword [$strSize], ebx
-    add ebx, 1
-    mov eax, 1
-    func_call [$str], calloc, ebx, eax
-
-    ; tmpBigInt = *n
-    mov ebx, dword [$n]
-    mov eax, [ebx]
-    mov dword [$tmpBigInt], eax
-
-    ;while(index < strSize) write in str the hex in the link
-    mov dword [$index], 0
-    .set_str_start:
-       
-        mov ebx, dword [$tmpBigInt]
-        ; ebx = ebx->b = n->list->b
-        mov al, byte [ByteLink_b(ebx)]
-
-        ;00001111
-        mov ebx, 0
-        mov bl, al
-        and bl, 0x0F
-        mov ecx, dword [$index]
-        add ecx, dword [$str]
-        func_call [$rs], insertByteAsHexToStringR, ecx ,ebx
-        ; index = index + 1
-        add dword [$index], 1
-        mov ecx, dword [$index]
-
-        mov ebx, 0
-        mov bl, al
-        and bl, 0xF0
-        shr bl, 4
-        mov ecx, dword [$index]
-        add ecx, dword [$str]
-        func_call [$rs], insertByteAsHexToStringR, ecx ,ebx
-
-        ; index = index + 1
-        add dword [$index], 1
-        ; tmpBigInt = tmpBigInt->list->next
-        mov eax, dword [$tmpBigInt]
-        mem_mov ebx , dword [$tmpBigInt], dword [ByteLink_next(eax)]
-        ; if(index < strSize) jmp to set_str_start
-        mov ecx, dword [$index]
-        mov ebx, dword [$strSize]
-        cmp ecx, ebx
-        jl .set_str_start
-
-    .set_str_end:
-
-    ;if(str[strSize] == '0') set it to null byte
-    mov ebx, [$str]
-    add ebx, [$strSize]
-    sub ebx, 1
-    mov al,  byte [ebx]
-    cmp al, '0'
-    jne .reverse_string
-        mov byte [ebx], 0
-        mov eax, dword [$strSize]
-        dec eax
-        mov dword [$strSize], eax
-    .reverse_string:
-        func_call [$rs], reverse_hex_string, [$str], [$strSize]
-
-    func_exit [$str]
+    func_exit [ebp-4]
     %pop
 
 insertByteAsHexToStringR: ;insertByteAsHexToStringR(char *str, byte b)
