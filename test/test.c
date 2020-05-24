@@ -115,6 +115,7 @@ extern BigInteger* BigInteger_duplicate(BigInteger *link);
 extern int BigInteger_getlistLen(BigInteger *bigInteger);
 extern BigInteger* BigInteger_add(BigInteger *n1, BigInteger *n2);
 extern BigInteger* BigInteger_and(BigInteger *n1, BigInteger *n2);
+extern BigInteger* BigInteger_or(BigInteger *n1, BigInteger *n2);
 extern void BigInteger_removeLeadingZeroes(BigInteger *bigInteger);
 extern void insertByteAsHexToStringR(char *str, int b);
 extern void reverse_hex_string(char *str, int len);
@@ -317,6 +318,53 @@ void test_BigInteger_and2(){
     }
 }
 
+void test_BigInteger_or(){
+    BigInteger *n1, *n2, *or;
+    ByteLink* n1list, *n2list; 
+    char n1c1 = 0xB0, n1c2 = 0xC0;
+    char n2c1 = 0x00, n2c2 = 0x01;
+
+    n1list = ByteLink_ctor(n1c2, NULL);
+    ByteLink_addAtStart(&n1list, n1c1);
+    n1 = BigInteger_ctor(n1list, 2);
+
+
+    n2list = ByteLink_ctor(n2c2, NULL);
+    ByteLink_addAtStart(&n2list, n2c1);
+    n2 = BigInteger_ctor(n2list, 2);
+
+    or = BigInteger_or(n1, n2);
+
+    if(or != NULL){
+        if(or->len == 2){
+            if(or->list != NULL){
+                if(or->list->b != (char)0xB0){
+                    printf("test_BigInteger_or expect add->list->b: %x recive %x\n", 0xB0, or->list->b);
+                } else {
+                    if(or->list->next != NULL){
+                        if(or->list->next->b != (char)0xC1){
+                            printf("test_BigInteger_or expect add->list->b: %x recive %x\n", 0xC1, or->list->next->b);
+                        }
+                    } else {
+                        printf("test_BigInteger_or senond link not to be null\n"); 
+                    }
+                }
+            } else {
+                printf("test_BigInteger_or first link is null\n"); 
+            }
+        } else {
+            printf("test_BigInteger_or expect expect %d recive %d\n", 1, or->len); 
+        }
+    } else {
+        printf("test_BigInteger_or return null BigInteger\n"); 
+    }
+
+    free(n1); free(n2);
+    if(or != NULL){
+        free(or);
+    }
+}
+
 void test_BigInteger_removeLeadingZeroes(){
     BigInteger* bigInt;
     char c1 = 0x65, c2 = 0X00, c3 = 0x00;
@@ -457,6 +505,7 @@ int main(int argc, char **argv){
     test_BigInteger_add2();
     test_BigInteger_and1();
     test_BigInteger_and2();
+    test_BigInteger_or();
     test_BigInteger_removeLeadingZeroes();
     test_insertByteAsHexToStringR();
     test_BigInteger_duplicate();

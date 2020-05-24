@@ -146,6 +146,7 @@ section .text
     global BigInteger_getlistLen
     global BigInteger_add
     global BigInteger_and
+    global BigInteger_or
     global BigInteger_removeLeadingZeroes
     global insertByteAsHexToStringR
     global reverse_hex_string
@@ -883,8 +884,127 @@ BigInteger_or: ; or(BigInteger* n1, BigInteger* n2): BigInteger*
     %define $n1 ebp+8
     %define $n2 ebp+12
     ; ----- locals ------
+    %define $orlist ebp-4
+    %define $currentAddedLink ebp-8
+    %define $currentShorter ebp-12
+    %define $currentLonger ebp-16
+    %define $saveflags ebp-20
+    %define $resBigInt ebp-24
+    %define $resLen ebp-28
     ; ----- body ------
+    func_entry 28
 
+    ;resLen = 0
+    mov dword [$resLen], 0
+
+    ;set currentShorter and currentLonger
+    mov eax, [$n1]
+    mov eax, dword [BigInteger_list_len(eax)]
+
+    mov ebx, [$n2]
+    mov ebx, dword [BigInteger_list_len(ebx)]
+
+    cmp eax, ebx
+    jl .set_n2_as_longer
+        mov eax, dword [$n1]
+        mem_mov ecx, [$currentLonger], [BigInteger_list(eax)]
+        mov eax, dword [$n2]
+        mem_mov ecx, [$currentShorter], [BigInteger_list(eax)]
+        jmp .set_n1_as_longer_c
+    .set_n2_as_longer:
+        mov eax, dword [$n2]
+        mem_mov ecx, [$currentLonger], [BigInteger_list(eax)]
+        mov eax, dword [$n1]
+        mem_mov ecx, [$currentShorter], [BigInteger_list(eax)]
+    .set_n1_as_longer_c:
+
+    mov dword [$saveflags], 0
+    ;currentAddedLink = ByteLink_ctor(currentShorter.b + currentLonger.b, NULL)
+    ; cl = currentShorter->b
+    mov ecx, dword [$currentShorter]
+    mov cl, byte [ByteLink_b(ecx)]
+
+    ; bl = currentShorter->b
+    mov ebx, dword [$currentLonger]
+    mov bl, byte [ByteLink_b(ebx)]
+
+    ; cl = cl or bl
+    ; save flags
+    or cl, bl
+    func_call [$currentAddedLink], ByteLink_ctor, ecx, NULL
+    mem_mov ecx, [$orlist], [$currentAddedLink]
+
+    ;currents to next
+    mov ecx, dword [$currentShorter]
+    mem_mov ebx, [$currentShorter], [ByteLink_next(ecx)]
+
+    mov ecx, dword [$currentLonger]
+    mem_mov ebx, [$currentLonger], [ByteLink_next(ecx)]
+
+    ;resLen = resLen + 1
+    inc dword [$resLen]
+    ;while(currentShorter != NULL)
+    .add_with_short_loop_start:
+        cmp dword [$currentShorter], 0
+        je .add_with_short_loop_end
+
+        ; cl = currentShorter->b
+        mov ecx, dword [$currentShorter]
+        mov cl, byte [ByteLink_b(ecx)]
+
+        ; bl = currentShorter->b
+        mov ebx, dword [$currentLonger]
+        mov bl, byte [ByteLink_b(ebx)]
+
+        ;cl = cl + bl = currentShorter->b + currentShorter->b + carray
+        or cl, bl
+
+        ;resLen = resLen + 1
+        inc dword [$resLen]
+
+        ;currentAddedLink = ByteLink_AddAsLast(currentAddedLink, currentShorter.b add with carray currentLonger.b)
+        func_call [$currentAddedLink], ByteLink_addAsNext, [$currentAddedLink], ecx
+
+        ;currents to next
+        mov ecx, dword [$currentShorter]
+        mem_mov ebx, [$currentShorter], [ByteLink_next(ecx)]
+
+        mov ecx, dword [$currentLonger]
+        mem_mov ebx, [$currentLonger], [ByteLink_next(ecx)]
+        jmp .add_with_short_loop_start
+
+    .add_with_short_loop_end:
+
+    ;while(currentLonger != NULL)
+    .add_with_long_loop_start:
+        cmp dword [$currentLonger], 0
+        je .add_with_long_loop_end
+
+        mov ecx, 0
+        ; bl = currentShorter->b
+        mov ebx, dword [$currentLonger]
+        mov bl, byte [ByteLink_b(ebx)]
+
+        ;cl = cl + bl = currentShorter->b + currentShorter->b + carray
+        or cl, bl
+
+        ;resHexDgits = resHexDgits + 1
+        inc dword [$resLen]
+
+        ;currentAddedLink = ByteLink_AddAsLast(currentAddedLink, currentLonger.b add with carray 0)
+        func_call [$currentAddedLink], ByteLink_addAsNext, [$currentAddedLink], ecx
+
+        ;current longer next
+        mov ecx, dword [$currentLonger]
+        mem_mov ebx, [$currentLonger], [ByteLink_next(ecx)]
+        jmp .add_with_long_loop_start
+
+    .add_with_long_loop_end:
+
+    func_call [$resBigInt], BigInteger_ctor, [$orlist], [$resLen]
+    func_call eax, BigInteger_removeLeadingZeroes, [$resBigInt]
+
+    func_exit [$resBigInt]
     %pop
 
 BigInteger_multiply: ; multiply(BigInteger* n1, BigInteger* n2): BigInteger*
