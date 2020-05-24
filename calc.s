@@ -164,6 +164,14 @@ section .text
     global try_parse_arg_hex_string_num
     global str_last_char
 
+    global BigIntegerStack_ctor
+    global BigIntegerStack_free
+    global BigIntegerStack_push
+    global BigIntegerStack_pop
+    global BigIntegerStack_peek
+    global BigIntegerStack_hasAtLeastItems
+    global BigIntegerStack_isFull
+
     global BigInteger_ctor
     global BigInteger_free
     global BigInteger_duplicate
@@ -739,12 +747,12 @@ str_last_char: ; str_last_char(char *s): char*
 ;    int sp;
 ;
 ;    ctor(int capacity): BigIntegerStack*
-;    free(BigIntegerStack* s);
-;    push(BigStackInteger* s, BigInteger* n): void
-;    pop(BigStackInteger* s): BigInteger*
-;    peek(BigStackInteger* s): BigInteger*
-;    hasAtLeastItems(BigStackInteger* s, int amount): boolean
-;    isFull(BigStackInteger* s): boolean
+;    free(BigIntegerStack* s): void;
+;    push(BigIntegerStack* s, BigInteger* n): void
+;    pop(BigIntegerStack* s): BigInteger*
+;    peek(BigIntegerStack* s): BigInteger*
+;    hasAtLeastItems(BigIntegerStack* s, int amount): boolean
+;    isFull(BigIntegerStack* s): boolean
 ;}
 %endif
 
@@ -781,7 +789,7 @@ BigIntegerStack_ctor: ; ctor(int capacity): BigInteger*
     ; s->capacity = capacity;
     mem_mov ebx, [BigIntegerStack_capacity(eax)], [$capacity]
     ; s->sp = 0;
-    mov dword [BigIntegerStack_sp(eax)], -1
+    mov dword [BigIntegerStack_sp(eax)], 0
 
     func_exit [$s]
     %pop
@@ -812,16 +820,16 @@ BigIntegerStack_push: ; push(BigStackInteger* s, BigInteger* n): void
     ; ----- locals -----
     ; ----- body ------
     func_entry
-    
-    ; s->sp++;
-    mov eax, [$s]
-    inc dword [BigIntegerStack_sp(eax)]
 
     ; s->numbers[s->sp] = n;
     mov eax, [$s]
     mov ebx, [BigIntegerStack_numbers(eax)]
     mov eax, [BigIntegerStack_sp(eax)]
     mem_mov ecx, [ebx+4*eax], [$n]
+    
+    ; s->sp++;
+    mov eax, [$s]
+    inc dword [BigIntegerStack_sp(eax)]
 
     dbg_print_big_integer [$n], "Pushed number: "
 
@@ -860,6 +868,7 @@ BigIntegerStack_peek: ; peek(BigStackInteger* s): BigInteger*
     mov eax, [$s]
     mov ebx, [BigIntegerStack_numbers(eax)]
     mov eax, [BigIntegerStack_sp(eax)]
+    dec eax
     mem_mov ecx, [$n], [ebx+4*eax]
 
     func_exit [$n]
@@ -916,11 +925,11 @@ BigIntegerStack_isFull: ; isFull(BigStackInteger* s): boolean
 
     .full:
         ; enough_for_pop = true;
-        mov dword [$enough_for_pop], FALSE
+        mov dword [$enough_for_pop], TRUE
         jmp .exit
     .free:
         ; enough_for_pop = false;
-        mov dword [$enough_for_pop], TRUE
+        mov dword [$enough_for_pop], FALSE
         jmp .exit
 
     .exit:

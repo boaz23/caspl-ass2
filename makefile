@@ -1,7 +1,7 @@
 CC			:=	gcc
 CC_FLAGS	:=	-Wall -g -m32
 ASM			:=	nasm
-ASM_FLAGS	:=	-f elf -g -w+all
+ASM_FLAGS	:=	-f elf -w+all
 LINK		:=	ld
 LINK_FLAGS	:=	-g -m elf_i386
 

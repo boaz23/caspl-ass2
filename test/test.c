@@ -1,14 +1,60 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include  <string.h>
+#include <string.h>
+
+/* ByteLink */
+typedef struct ByteLink{
+    char b;
+    struct ByteLink* next;
+} __attribute__((packed, aligned(1))) ByteLink;
+
+extern ByteLink* ByteLink_ctor(char b, ByteLink* next);
+extern void ByteLink_addAtStart(ByteLink** link, char b);
+extern char * ByteLink_freeList(ByteLink* list);
+extern ByteLink* ByteLink_duplicate(ByteLink* list);
+
+/* BigInterger */
+typedef struct BigInteger {
+    struct ByteLink* list;
+    int len;
+} BigInteger;
+
+extern BigInteger* BigInteger_ctor(ByteLink *link, int LenHexDigits);
+extern void BigInteger_free(BigInteger *link);
+extern BigInteger* BigInteger_duplicate(BigInteger *link);
+
+extern int BigInteger_getlistLen(BigInteger *bigInteger);
+extern BigInteger* BigInteger_add(BigInteger *n1, BigInteger *n2);
+extern BigInteger* BigInteger_and(BigInteger *n1, BigInteger *n2);
+extern BigInteger* BigInteger_or(BigInteger *n1, BigInteger *n2);
+extern void BigInteger_removeLeadingZeroes(BigInteger *bigInteger);
+extern void insertByteAsHexToStringR(char *str, int b);
+extern void reverse_hex_string(char *str, int len);
+extern char *BigInteger_toString(BigInteger *link);
+
+/* BigIntegerStack */
+typedef struct BigIntegerStack {
+    BigInteger **numbers;
+    int capacity;
+    int sp;
+} BigIntegerStack;
+
+extern BigIntegerStack* BigIntegerStack_ctor(int capacity);
+extern void BigIntegerStack_free(BigIntegerStack* s);
+extern void BigIntegerStack_push(BigIntegerStack* s, BigInteger* n);
+extern BigInteger* BigIntegerStack_pop(BigIntegerStack* s);
+extern BigInteger* BigIntegerStack_peek(BigIntegerStack* s);
+extern int BigIntegerStack_hasAtLeastItems(BigIntegerStack* s, int amount);
+extern int BigIntegerStack_isFull(BigIntegerStack* s);
+
+extern int DebugMode;
+extern int NumbersStackCapacity;
+extern BigIntegerStack *NumbersStack;
 
 extern void set_run_settings_from_args(int argc, char *argv[]);
 extern int is_arg_debug(char *arg);
 extern int try_parse_arg_hex_string_num(char *arg);
 extern char* str_last_char(char *s);
-
-extern int DebugMode;
-extern int NumbersStackCapacity;
 
 int test_stack_mng() {
     int a = 5;
@@ -84,17 +130,6 @@ void test_set_run_settings_from_args() {
     };
     test_set_run_settings_from_args_args(2, s);
 }
-
-/* ByteLink */
-typedef struct ByteLink{
-    char b;
-    struct ByteLink* next;
-} __attribute__((packed, aligned(1))) ByteLink;
-
-extern ByteLink* ByteLink_ctor(char b, ByteLink* next);
-extern void ByteLink_addAtStart(ByteLink** link, char b);
-extern char * ByteLink_freeList(ByteLink* list);
-extern ByteLink* ByteLink_duplicate(ByteLink* list);
 
 void test_same_Bytelink(ByteLink *current, ByteLink *dupCurrent, char *funcName);
 
@@ -184,25 +219,6 @@ void test_same_Bytelink(ByteLink *current, ByteLink *dupCurrent, char *funcName)
         }
     }
 }
-
-/* BigInterger */
-typedef struct BigInteger{
-    struct ByteLink* list;
-    int len;
-} BigInteger;
-
-extern BigInteger* BigInteger_ctor(ByteLink *link, int LenHexDigits);
-extern void BigInteger_free(BigInteger *link);
-extern BigInteger* BigInteger_duplicate(BigInteger *link);
-
-extern int BigInteger_getlistLen(BigInteger *bigInteger);
-extern BigInteger* BigInteger_add(BigInteger *n1, BigInteger *n2);
-extern BigInteger* BigInteger_and(BigInteger *n1, BigInteger *n2);
-extern BigInteger* BigInteger_or(BigInteger *n1, BigInteger *n2);
-extern void BigInteger_removeLeadingZeroes(BigInteger *bigInteger);
-extern void insertByteAsHexToStringR(char *str, int b);
-extern void reverse_hex_string(char *str, int len);
-extern char *BigInteger_toString(BigInteger *link);
 
 void test_insertByteAsHexToStringR(){
     char *str = (char *)malloc(2);
@@ -570,16 +586,67 @@ void test_BigInteger_toString(){
     }
     free(str);
     BigInteger_free(bigInt);
-    
 }
 
+BigInteger* mock_big_integer(unsigned char c) {
+    ByteLink *b_link = ByteLink_ctor((char)c, NULL);
+    BigInteger *n = BigInteger_ctor(b_link, 1);
+    return n;
+}
 
+void test_BigIntegerStack() {
+    BigInteger *n = NULL;
+    int res;
+    BigIntegerStack *s = BigIntegerStack_ctor(2);
 
-/* ByteLink */
+    res = 1;
+    res = BigIntegerStack_isFull(s); // res = 0
+    res = 1;
+    res = BigIntegerStack_hasAtLeastItems(s, 1); // res = 0
+    BigIntegerStack_push(s, mock_big_integer(0x56));
 
+    res = 1;
+    res = BigIntegerStack_isFull(s); // res = 0;
+    res = BigIntegerStack_hasAtLeastItems(s, 1); // res = 1
+    res = BigIntegerStack_hasAtLeastItems(s, 2); // res = 0
+    BigIntegerStack_push(s, mock_big_integer(0x10));
+
+    res = 0;
+    res = BigIntegerStack_hasAtLeastItems(s, 2); // res = 1
+    res = 0;
+    res = BigIntegerStack_hasAtLeastItems(s, 1); // res = 1
+    res = 0;
+    res = BigIntegerStack_isFull(s); // res = 1
+
+    res = 0;
+    n = BigIntegerStack_peek(s);
+    res = BigIntegerStack_isFull(s); // res = 1
+    res = 0;
+    res = BigIntegerStack_hasAtLeastItems(s, 2); // res = 1
+
+    n = NULL;
+    n = BigIntegerStack_pop(s);
+    res = 1;
+    res = BigIntegerStack_isFull(s); // res = 0
+    res = 1;
+    res = BigIntegerStack_hasAtLeastItems(s, 2); // res = 0
+    res = BigIntegerStack_hasAtLeastItems(s, 1); // res = 1
+    
+    n = NULL;
+    n = BigIntegerStack_pop(s);
+    res = 1;
+    res = BigIntegerStack_isFull(s); // res = 0
+    res = 1;
+    res = BigIntegerStack_hasAtLeastItems(s, 2); // res = 0
+    res = 1;
+    res = BigIntegerStack_hasAtLeastItems(s, 1); // res = 0
+
+    BigIntegerStack_free(s);
+}
 
 int main(int argc, char **argv){
     test_set_run_settings_from_args();
+    test_BigIntegerStack();
     test_stack_mng();
 
     test_ByteLink_ctor();
