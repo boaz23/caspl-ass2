@@ -134,7 +134,32 @@ section .text
     extern stdin
     extern stderr
 
+%ifdef TEST_C
+    global set_run_settings_from_args
+    global is_arg_debug
+    global try_parse_arg_hex_string_num
+    global str_last_char
+
+    global BigInteger_ctor
+    global BigInteger_free
+    global BigInteger_duplicate
+    global BigInteger_getlistLen
+    global BigInteger_add
+    global BigInteger_and
+    global BigInteger_removeLeadingZeroes
+    global insertByteAsHexToStringR
+    global reverse_hex_string
+    global BigInteger_toString
+
+    global ByteLink_ctor
+    global ByteLink_addAtStart
+    global ByteLink_freeList
+    global ByteLink_duplicate
+    
+main_1:
+%else
 main: ; main(int argc, char *argv[], char *envp[]): int
+%endif
     %push
     ; ----- arguments -----
     ; ----- locals -----

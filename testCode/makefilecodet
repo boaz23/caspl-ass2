@@ -1,9 +1,0 @@
-build:
-	nasm -f elf32 calct.s -o calct.o
-	gcc -g -m32 -Wall codet.c calct.o -o codet
-
-.PHONEY:
-	clean
-
-clean:
-	rm *.o codet
