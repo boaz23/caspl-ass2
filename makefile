@@ -33,4 +33,8 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.s
 	$(ASM) $(ASM_FLAGS) $< -o $@ -l $(subst .o,.lst,$(subst $(OBJ_DIR),$(LIST_DIR),$@))
 
 clean:
-	rm -f $(BIN_DIR)/*.bin $(OBJ_DIR)/*.o $(LIST_DIR)/*.lst test/*.o test/*.lst
+	rm -f $(BIN_DIR)/$(PRG_NAME)\
+		  $(BIN_DIR)/*.bin\
+		  $(OBJ_DIR)/*.o\
+		  $(LIST_DIR)/*.lst\
+		  test/test test/*.o test/*.lst

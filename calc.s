@@ -57,6 +57,23 @@ MAX_LINE_LENGTH EQU 84
     add esp, (%0-2)*STK_UNIT
 %endmacro
 
+; SIGNATURE: printf_inline(format_str, ... args)
+; DESCRIPTION: calls printf with format_str followed by a null terminator with the specified args
+; EXAMPLE:
+;   printf_inline "%d", [r]
+;   the above is semantically equivalent to:
+;       printf("%d", [r])
+%macro printf_inline 1-*
+    section	.rodata
+        %%format: db %1, NULL_TERMINATOR
+    section	.text
+        %if %0-1
+            func_call eax, printf, %%format, %{2:-1}
+        %else
+            func_call eax, printf, %%format
+        %endif
+%endmacro
+
 ; SIGNATURE: printf_line(format_str, ... args)
 ; DESCRIPTION: calls printf with format_str followed by new line and null terminator with the specified args
 ; EXAMPLE:
@@ -64,14 +81,11 @@ MAX_LINE_LENGTH EQU 84
 ;   the above is semantically equivalent to:
 ;       printf("%d\n", [r])
 %macro printf_line 1-*
-    section	.rodata
-        %%format: db %1, NEW_LINE_TERMINATOR, NULL_TERMINATOR
-    section	.text
-        %if %0-1
-            func_call eax, printf, %%format, %{2:-1}
-        %else
-            func_call eax, printf, %%format
-        %endif
+    %if %0-1
+        printf_inline {%1, NEW_LINE_TERMINATOR}, %{2:-1}
+    %else
+        printf_inline {%1, NEW_LINE_TERMINATOR}
+    %endif
 %endmacro
 
 ; SIGNATURE: mem_mov(r, m1, m2)
@@ -234,11 +248,15 @@ main: ; main(int argc, char *argv[], char *envp[]): int
         jmp %3
 %endmacro
 
-; dbg_print_big_integer(n)
-%macro dbg_print_big_integer 1
+; dbg_print_big_integer(n, ... dbg_print)
+%macro dbg_print_big_integer 1-*
     ; if (DebugMode) print_big_integer(n);
     cmp dword [DebugMode], FALSE
     jne %%else
+    ; print info
+    %if %0-1
+        printf_inline %{2:-1}
+    %endif
     ; print_big_integer(n)
     func_call eax, print_big_integer, %1
 
@@ -477,7 +495,7 @@ parse_push_big_integer: ; parse_push_big_integer(char *s): void
     jmp .exit
 
     .number_parsed_successful:
-    dbg_print_big_integer [$n]
+    dbg_print_big_integer [$n], "Parsed number: "
 
     .check_can_push:
     can_push_number [NumbersStack], .push_num, .free_big_int
@@ -749,7 +767,7 @@ BigIntegerStack_push: ; push(BigStackInteger* s, BigInteger* n): void
     ; ----- body ------
     func_entry
     
-    dbg_print_big_integer [$n]
+    dbg_print_big_integer [$n], "Pushed number: "
 
     func_exit
     %pop
