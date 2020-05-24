@@ -114,6 +114,7 @@ extern BigInteger* BigInteger_duplicate(BigInteger *link);
 
 extern int BigInteger_getlistLen(BigInteger *bigInteger);
 extern BigInteger* BigInteger_add(BigInteger *n1, BigInteger *n2);
+extern BigInteger* BigInteger_and(BigInteger *n1, BigInteger *n2);
 extern void BigInteger_removeLeadingZeroes(BigInteger *bigInteger);
 extern void insertByteAsHexToStringR(char *str, int b);
 extern void reverse_hex_string(char *str, int len);
@@ -204,11 +205,11 @@ void test_BigInteger_add2(){
     if(add != NULL){
         if(add->len == 2){
             if(add->list != NULL){
-                if(add->list->b != 0x60){
+                if(add->list->b != (char)0x60){
                     printf("test_BigInteger_add expect add->list->b: %c recive %c\n", n1c1, add->list->b);
                 } else {
                     if(add->list->next != NULL){
-                        if(add->list->next->b != 0x01){
+                        if(add->list->next->b != (char)0x01){
                             printf("test_BigInteger_add expect add->list->b: %c recive %c\n", n2c1, add->list->next->b);
                         }
                     } else {
@@ -227,8 +228,92 @@ void test_BigInteger_add2(){
 
     free(n1); free(n2);
     if(add != NULL){
-        printf("%s\n",BigInteger_toString(add));
         free(add);
+    }
+}
+
+void test_BigInteger_and1(){
+    BigInteger *n1, *n2, *and;
+    ByteLink* n1list, *n2list; 
+    char n1c1 = 0x12, n1c2 = 0XC9;
+    char n2c1 = 0x00;
+
+    n1list = ByteLink_ctor(n1c2, NULL);
+    ByteLink_addAtStart(&n1list, n1c1);
+    n1 = BigInteger_ctor(n1list, 2);
+
+
+    n2list = ByteLink_ctor(n2c1, NULL);
+    n2 = BigInteger_ctor(n2list, 1);
+
+    and = BigInteger_and(n1, n2);
+
+    if(and != NULL){
+        if(and->len == 1){
+            if(and->list != NULL){
+                if(and->list->b != 0){
+                    printf("test_BigInteger_and1 expect and->list->b: %c recive %c\n", 0, and->list->b);
+                } else {
+                    if(and->list->next != NULL){
+                        printf("test_BigInteger_add2 senond link is null\n"); 
+                    } 
+                }
+            } else {
+                printf("test_BigInteger_and1 first link is null\n"); 
+            }
+        } else {
+            printf("test_BigInteger_and1 expect expect %d recive %d\n", 1, and->len); 
+        }
+    } else {
+        printf("test_BigInteger_and1 return null BigInteger\n"); 
+    }
+
+    free(n1); free(n2);
+    if(and != NULL){
+        free(and);
+    }
+}
+
+void test_BigInteger_and2(){
+    BigInteger *n1, *n2, *and;
+    ByteLink* n1list, *n2list; 
+    char n1c1 = 0xB0, n1c2 = 0xC0;
+    char n2c1 = 0xB0, n2c2 = 0x0C;
+
+    n1list = ByteLink_ctor(n1c2, NULL);
+    ByteLink_addAtStart(&n1list, n1c1);
+    n1 = BigInteger_ctor(n1list, 2);
+
+
+    n2list = ByteLink_ctor(n2c2, NULL);
+    ByteLink_addAtStart(&n2list, n2c1);
+    n2 = BigInteger_ctor(n2list, 2);
+
+    and = BigInteger_and(n1, n2);
+
+    if(and != NULL){
+        if(and->len == 1){
+            if(and->list != NULL){
+                if(and->list->b != (char)0xB0){
+                    printf("test_BigInteger_add2 expect add->list->b: %x recive %x\n", 0xB0, and->list->b);
+                } else {
+                    if(and->list->next != NULL){
+                        printf("test_BigInteger_add2 senond link is null\n"); 
+                    } 
+                }
+            } else {
+                printf("test_BigInteger_add2 first link is null\n"); 
+            }
+        } else {
+            printf("test_BigInteger_add2 expect expect %d recive %d\n", 1, and->len); 
+        }
+    } else {
+        printf("test_BigInteger_add2 return null BigInteger\n"); 
+    }
+
+    free(n1); free(n2);
+    if(and != NULL){
+        free(and);
     }
 }
 
@@ -370,6 +455,8 @@ int main(int argc, char **argv){
     test_BigInteger_getlistLen();
     test_BigInteger_add1();
     test_BigInteger_add2();
+    test_BigInteger_and1();
+    test_BigInteger_and2();
     test_BigInteger_removeLeadingZeroes();
     test_insertByteAsHexToStringR();
     test_BigInteger_duplicate();
