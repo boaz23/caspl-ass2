@@ -2095,7 +2095,9 @@ BigInteger_multiply: ; multiply(BigInteger* n1, BigInteger* n2): BigInteger*
         %push
         %assign $i 0
         %rep 8
-            mov al, byte [ByteLink_b($current)]
+            .bit_test%[$i]:
+            mov ebx, [$n2_blink_curr]
+            mov al, byte [ByteLink_b(ebx)]
             bt eax, $i
             jnc .bit_increment%[$i]
             func_call [$n_temp], BigInteger_add, [$n_base], [$n_res]
