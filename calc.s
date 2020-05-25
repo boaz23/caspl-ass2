@@ -11,6 +11,9 @@ STK_UNIT EQU 4
 DEFAULT_NUMBERS_STACK_SIZE EQU 5
 MAX_LINE_LENGTH EQU 84
 
+%define align_on(n, base) (((n)-1)-(((n)-1)%(base)))+(base)
+%define align_on_16(n) align_on(n, 16)
+
 ; SIGNATURE: func_entry(n = 0)
 ;    n - locals size (in bytes). default is 0
 ; DESCRIPTION: Prepares the stack frame before executing the function
@@ -19,7 +22,9 @@ MAX_LINE_LENGTH EQU 84
 %macro func_entry 0-1 0
     push ebp
     mov ebp, esp
-    sub esp, %1
+    %if align_on_16(%1)
+    sub esp, align_on_16(%1)
+    %endif
     pushfd
     pushad
 %endmacro
@@ -30,7 +35,10 @@ MAX_LINE_LENGTH EQU 84
 %macro func_exit 0-1 eax
     popad
     popfd
+    %ifidn %1, eax
+    %else
     mov eax, %1
+    %endif
     mov esp, ebp
     pop ebp
     ret
@@ -46,6 +54,14 @@ MAX_LINE_LENGTH EQU 84
 ;   the above is semantically equivalent to:
 ;       [r] = fgets(ebx, MAX_LINE_LENGTH, [stdin])
 %macro func_call 2-*
+    %push
+    %define $args_size (%0-2)*STK_UNIT
+    %define $args_size_aligned align_on_16($args_size)
+    %define $align_push_size ($args_size_aligned - $args_size)
+    
+    %if $align_push_size
+    sub esp, $align_push_size
+    %endif
     %rep %0-2
         %rotate -1
         push dword %1
@@ -53,8 +69,18 @@ MAX_LINE_LENGTH EQU 84
     %rotate -1
     call %1
     %rotate -1
+    %ifidn %1, eax
+    %else
     mov %1, eax
-    add esp, (%0-2)*STK_UNIT
+    %endif
+    %if $args_size_aligned
+    add esp, $args_size_aligned
+    %endif
+    %pop
+%endmacro
+
+%macro void_call 1-*
+    func_call eax, %{1:-1}
 %endmacro
 
 ; SIGNATURE: printf_inline(format_str, ... args)
@@ -68,9 +94,9 @@ MAX_LINE_LENGTH EQU 84
         %%format: db %1, NULL_TERMINATOR
     section	.text
         %if %0-1
-            func_call eax, printf, %%format, %{2:-1}
+            void_call printf, %%format, %{2:-1}
         %else
-            func_call eax, printf, %%format
+            void_call printf, %%format
         %endif
 %endmacro
 
