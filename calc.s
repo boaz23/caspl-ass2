@@ -374,20 +374,11 @@ myCalc: ; myCalc(): int
     mov dword [$operations_count], 0
 
     .input_loop: ;while (true)
-        ; fgets(buf, arr_len(buf), stdin);
-        lea eax, [$buf]
-        func_call eax, fgets, eax, MAX_LINE_LENGTH, [stdin]
+        printf_inline "calc: "
 
-        ; p_last_char = str_last_char(buf);
+        ; input_line(buf, arr_len(buf));
         lea eax, [$buf]
-        func_call [$p_last_char], str_last_char, eax
-
-        ; if (*p_last_char == '\n') *p_last_char = '\0';
-        mov eax, dword [$p_last_char]
-        cmp byte [eax], NEW_LINE_TERMINATOR
-        jne .act
-        mov byte [eax], NULL_TERMINATOR
-        dec dword [$p_last_char]
+        func_call [$p_last_char], input_line, eax, MAX_LINE_LENGTH
 
         .act:
         ; c = buf[0]
@@ -453,6 +444,34 @@ myCalc: ; myCalc(): int
     .input_loop_end:
 
     func_exit [$operations_count]
+    %pop
+
+input_line: ; input_line(char *buf, int buf_size): char*
+    %push
+    ; ----- arguments -----
+    %define $buf ebp+8
+    %define $buf_size ebp+12
+    ; ----- locals -----
+    ; int operations_count;
+    %define $p_last_char ebp-4
+    ; ----- body ------
+    func_entry 4
+
+    ; fgets(buf, buf_size, stdin);
+    func_call eax, fgets, [$buf], [$buf_size], [stdin]
+
+    ; p_last_char = str_last_char(buf);
+    func_call [$p_last_char], str_last_char, [$buf]
+
+    ; if (*p_last_char == '\n') *p_last_char = '\0';
+    mov eax, dword [$p_last_char]
+    cmp byte [eax], NEW_LINE_TERMINATOR
+    jne .exit
+    mov byte [eax], NULL_TERMINATOR
+    dec dword [$p_last_char]
+
+    .exit:
+    func_exit [$p_last_char]
     %pop
 
 print_top_stack_number: ; print_number_stack_top(): void
