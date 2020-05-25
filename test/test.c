@@ -24,6 +24,8 @@ extern void BigInteger_free(BigInteger *link);
 extern BigInteger* BigInteger_duplicate(BigInteger *link);
 
 extern int BigInteger_getlistLen(BigInteger *bigInteger);
+extern BigInteger* BigInteger_fromInt(int n);
+extern BigInteger* BigInteger_calcHexDigitsInteger(BigInteger *bigInteger);
 extern BigInteger* BigInteger_add(BigInteger *n1, BigInteger *n2);
 extern BigInteger* BigInteger_and(BigInteger *n1, BigInteger *n2);
 extern BigInteger* BigInteger_or(BigInteger *n1, BigInteger *n2);
@@ -240,6 +242,190 @@ void test_insertByteAsHexToStringR(){
 
     free(str);
 }
+
+void test_BigInteger_fromInt1(){
+    BigInteger *fromInt;
+    int n = 0x65;
+
+    fromInt = BigInteger_fromInt(n);
+
+    if(fromInt != NULL){
+        if(fromInt->len == 1){
+            if(fromInt->list != NULL){
+                if(fromInt->list->b != (char)n){
+                    printf("test_BigInteger_fromInt expect fromInt->list->b = %c recive: %x\n", (char)n, fromInt->list->b); 
+                }
+                if(fromInt->list->next != NULL){
+                    printf("test_BigInteger_fromInt expect fromInt->list->next to be null \n"); 
+                }
+            } else {
+                printf("test_BigInteger_fromInt expect fromInt->list not to be null \n"); 
+            }
+        } else {
+            printf("test_BigInteger_fromInt expect len = 1 recive: %d\n", fromInt->len); 
+        }
+    } else {
+        printf("test_BigInteger_fromInt return null BigInteger\n"); 
+    }
+
+    if(fromInt != NULL){
+        BigInteger_free(fromInt);
+    }
+}
+
+void test_BigInteger_fromInt2(){
+    BigInteger *fromInt;
+    int n = 0x6512;
+
+    fromInt = BigInteger_fromInt(n);
+
+    if(fromInt != NULL){
+        if(fromInt->len == 2){
+            if(fromInt->list != NULL){
+                if(fromInt->list->b != (char)0x12){
+                    printf("test_BigInteger_fromInt expect fromInt->list->b = %c recive: %x\n", (char)0x12, fromInt->list->b); 
+                }
+                if(fromInt->list->next == NULL){
+                    printf("test_BigInteger_fromInt expect fromInt->list->next not to be null \n"); 
+                } else {
+                    if(fromInt->list->next->b != (char)0x65){
+                        printf("test_BigInteger_fromInt expect fromInt->list->b = %c recive: %x\n", (char)0x65, fromInt->list->b); 
+                    }
+                    if(fromInt->list->next->next != NULL){
+                        printf("test_BigInteger_fromInt expect fromInt->list->next->next to be null \n"); 
+                    }  
+                }
+            } else {
+                printf("test_BigInteger_fromInt expect fromInt->list not to be null \n"); 
+            }
+        } else {
+            printf("test_BigInteger_fromInt expect len = 1 recive: %d\n", fromInt->len); 
+        }
+    } else {
+        printf("test_BigInteger_fromInt return null BigInteger\n"); 
+    }
+
+    if(fromInt != NULL){
+        BigInteger_free(fromInt);
+    }
+}
+
+void test_BigInteger_calcHexDigitsInteger1(){
+    BigInteger *bigInt, *calcBigInt;
+    ByteLink* list;
+    int c = 0x12, len = 1;
+    list = ByteLink_ctor(0, NULL);
+
+    bigInt = BigInteger_ctor(list, len);
+    calcBigInt = BigInteger_calcHexDigitsInteger(bigInt);
+
+    if(calcBigInt != NULL){
+        if(calcBigInt->list != NULL){
+            if(calcBigInt->list->b != (char)len){
+                printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->b %c recive %c\n", (char)len, calcBigInt->list->b); 
+            }
+            if(calcBigInt->list->next != NULL){
+                printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->next to be null \n"); 
+            }
+        } else {
+            printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list not to be null \n"); 
+        }
+
+        if(calcBigInt->len != 1){
+            printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->len to 1 \n");
+        }
+    } else {
+        printf("test_BigInteger_calcHexDigitsInteger return null BigInteger\n"); 
+    }
+
+    BigInteger_free(bigInt);
+    if(calcBigInt != NULL){
+        BigInteger_free(calcBigInt);
+    }
+}
+
+void test_BigInteger_calcHexDigitsInteger2(){
+    BigInteger *bigInt, *calcBigInt;
+    ByteLink* list;
+    int c = 0x12, index = 1, len = 3;
+    list = ByteLink_ctor(c, NULL);
+
+    for(;index < len; index++){
+        ByteLink_addAtStart(&list, c);
+    }
+    bigInt = BigInteger_ctor(list, len);
+    calcBigInt = BigInteger_calcHexDigitsInteger(bigInt);
+
+    if(calcBigInt != NULL){
+        if(calcBigInt->list != NULL){
+            if(calcBigInt->list->b != (char)len){
+                printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->b %c recive %c\n", (char)len, calcBigInt->list->b); 
+            }
+            if(calcBigInt->list->next != NULL){
+                printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->next to be null \n"); 
+            }
+        } else {
+            printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list not to be null \n"); 
+        }
+
+        if(calcBigInt->len != 1){
+            printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->len to 1 \n");
+        }
+    } else {
+        printf("test_BigInteger_calcHexDigitsInteger return null BigInteger\n"); 
+    }
+
+    BigInteger_free(bigInt);
+    if(calcBigInt != NULL){
+        BigInteger_free(calcBigInt);
+    }
+}
+
+void test_BigInteger_calcHexDigitsInteger3(){
+    BigInteger *bigInt, *calcBigInt;
+    ByteLink* list;
+    int c = 0x12, index = 1, len = 0x162;
+    list = ByteLink_ctor(c, NULL);
+
+    for(;index < len; index++){
+        ByteLink_addAtStart(&list, c);
+    }
+    bigInt = BigInteger_ctor(list, len);
+    calcBigInt = BigInteger_calcHexDigitsInteger(bigInt);
+
+    if(calcBigInt != NULL){
+        if(calcBigInt->list != NULL){
+            if(calcBigInt->list->b != (char)0x62){
+                printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->b %c recive %x\n", (char)0x62, calcBigInt->list->b); 
+            }
+            if(calcBigInt->list->next != NULL){
+                if(calcBigInt->list->next->b != (char)0x01){
+                    printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->b %c recive %x\n", (char)0x01, calcBigInt->list->next->b); 
+                }
+                if(calcBigInt->list->next->next != NULL){
+                    printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->next to be null \n"); 
+                }
+            } else {
+                printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->next not to be null \n"); 
+            }
+        } else {
+            printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list not to be null \n"); 
+        }
+
+        if(calcBigInt->len != 2){
+            printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->len to 1 \n");
+        }
+    } else {
+        printf("test_BigInteger_calcHexDigitsInteger return null BigInteger\n"); 
+    }
+
+    BigInteger_free(bigInt);
+    if(calcBigInt != NULL){
+        BigInteger_free(calcBigInt);
+    }
+}
+
+
 
 void test_BigInteger_add1(){
     BigInteger *n1, *n2, *add;
@@ -654,6 +840,11 @@ int main(int argc, char **argv){
     test_ByteLink_duplicate();
 
     test_BigInteger_getlistLen();
+    test_BigInteger_fromInt1();
+    test_BigInteger_fromInt2();
+    test_BigInteger_calcHexDigitsInteger1();
+    test_BigInteger_calcHexDigitsInteger2();
+    test_BigInteger_calcHexDigitsInteger3();
     test_BigInteger_add1();
     test_BigInteger_add2();
     test_BigInteger_and1();

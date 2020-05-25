@@ -175,6 +175,8 @@ section .text
     global BigInteger_ctor
     global BigInteger_free
     global BigInteger_duplicate
+    global BigInteger_fromInt
+    global BigInteger_calcHexDigitsInteger
     global BigInteger_getlistLen
     global BigInteger_add
     global BigInteger_and
@@ -1270,15 +1272,96 @@ BigInteger_parse: ; parse(char *s): BigInteger*
 
     %pop
 
+BigInteger_fromInt: ; fromInt(int n): BigInteger*
+    %push
+    ; ----- arguments -----
+    %define $n ebp+8
+    ; ----- locals ------
+    %define $link ebp-4
+    %define $BigInt ebp-8
+    ; ----- body ------
+    func_entry 8
+
+    mov eax, dword [$n]
+    and eax, 0xFF000000
+    shr eax, 24
+    func_call [$link], ByteLink_ctor, eax, NULL
+
+    mov eax, dword [$n]
+    and eax, 0x00FF0000
+    shr eax, 16
+    lea ebx, [$link]
+    func_call ebx, ByteLink_addAtStart, ebx, eax
+
+    mov eax, dword [$n]
+    and eax, 0x0000FF00
+    shr eax, 8
+    lea ebx, [$link]
+    func_call ebx, ByteLink_addAtStart, ebx, eax
+
+    mov eax, dword [$n]
+    and eax, 0x000000FF
+    lea ebx, [$link]
+    func_call ebx, ByteLink_addAtStart, ebx, eax
+
+    func_call [$BigInt], BigInteger_ctor, [$link] , 4
+    func_call eax, BigInteger_removeLeadingZeroes, [$BigInt]
+
+    func_exit [$BigInt]
+    %pop
+
 BigInteger_calcHexDigitsInteger: ; calcHexDigitsInteger(BigInteger* n): BigInteger*
     %push
     ; ----- arguments -----
     %define $n ebp+8
     ; ----- locals ------
+    %define $hexlen ebp-4
+    %define $currentlink ebp-8
+    %define $BigInt ebp-12
     ; ----- body ------
-    func_entry
+    func_entry 12
 
-    func_exit
+    func_call [$hexlen], BigInteger_getlistLen, dword [$n]
+
+    ;current = n->list
+    mov eax, dword [$n]
+    mem_mov ebx, [$currentlink], [BigInteger_list(eax)]
+
+    ;if len = 1 and the byte is 0
+    cmp dword [$hexlen], 1
+    jne .len_bigger_than_1
+        mov ebx, [$currentlink]
+        cmp byte [ByteLink_b(ebx)], 0
+        je .create_BigInt
+
+    .len_bigger_than_1:
+
+    ;while(current->next != NULL)
+    .get_to_last_link_loop_start:
+        mov eax, dword [$currentlink]
+        cmp dword [ByteLink_next(eax)], 0
+        je .get_to_last_link_loop_end
+
+        ; current = current->next
+        mov eax, dword [$currentlink]
+        mem_mov ebx, [$currentlink], [ByteLink_next(eax)]
+        jmp .get_to_last_link_loop_start
+    .get_to_last_link_loop_end:
+
+    ;if b is in form of 0x0.. dec hexlen
+    mov eax, dword [$currentlink]
+    mov bl, byte [ByteLink_b(eax)]
+    and bl, 0xF0
+    cmp bl, 0
+    jne .create_BigInt
+    dec dword [$hexlen]
+
+    .create_BigInt:
+
+    ;create BigInt
+    func_call [$BigInt], BigInteger_fromInt, [$hexlen]
+
+    func_exit [$BigInt]
     %pop
 
 BigInteger_getlistLen: ; getHexDigitsLen(BigInteger* n): int
