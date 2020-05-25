@@ -333,38 +333,6 @@ main: ; main(int argc, char *argv[], char *envp[]): int
     %%else:
 %endmacro
 
-%macro big_integers_do_op_two_top_of_stack 1
-    %push
-    ; ----- arguments -----
-    ; ----- locals -----
-    %define $n1 ebp-4
-    %define $n2 ebp-8
-    %define $n_res ebp-12
-    ; ----- body ------
-    func_entry 12
-
-    %%check_can_pop:
-    can_pop_numbers [NumbersStack], 2, %%do_op, %%exit
-
-    %%do_op:
-    ; n1 = pop(NumbersStack);
-    func_call [$n1], BigIntegerStack_pop, [NumbersStack]
-    ; n2 = pop(NumbersStack);
-    func_call [$n2], BigIntegerStack_pop, [NumbersStack]
-    ; n_res = add(n1, n2);
-    func_call [$n_res], %1, [$n1], [$n2]
-    ; push(NumbersStack, n_res);
-    func_call eax, BigIntegerStack_push, [NumbersStack], [$n_res]
-    ; free(n1);
-    func_call eax, BigInteger_free, [$n1]
-    ; free(n2);
-    func_call eax, BigInteger_free, [$n2]
-
-    %%exit:
-    func_exit
-    %pop
-%endmacro
-
 myCalc: ; myCalc(): int
     %push
     ; ----- arguments -----
@@ -424,7 +392,8 @@ myCalc: ; myCalc(): int
 
         .inp_multiply:
             cmp_char byte [$c], '*', .inp_bitwise_and
-            dbg_printf_line "Multiplication is not supported"
+            dbg_printf_line "Multiplication"
+            func_call eax, mult_two_top_of_stack
             jmp .inp_loop_continue
 
         .inp_bitwise_and:
@@ -556,8 +525,43 @@ duplicate_top_stack_number: ; duplicate_top_stack_number(): void
     func_exit
     %pop
 
+%macro big_integers_do_op_two_top_of_stack 1
+    %push
+    ; ----- arguments -----
+    ; ----- locals -----
+    %define $n1 ebp-4
+    %define $n2 ebp-8
+    %define $n_res ebp-12
+    ; ----- body ------
+    func_entry 12
+
+    %%check_can_pop:
+    can_pop_numbers [NumbersStack], 2, %%do_op, %%exit
+
+    %%do_op:
+    ; n1 = pop(NumbersStack);
+    func_call [$n1], BigIntegerStack_pop, [NumbersStack]
+    ; n2 = pop(NumbersStack);
+    func_call [$n2], BigIntegerStack_pop, [NumbersStack]
+    ; n_res = add(n1, n2);
+    func_call [$n_res], %1, [$n1], [$n2]
+    ; push(NumbersStack, n_res);
+    func_call eax, BigIntegerStack_push, [NumbersStack], [$n_res]
+    ; free(n1);
+    func_call eax, BigInteger_free, [$n1]
+    ; free(n2);
+    func_call eax, BigInteger_free, [$n2]
+
+    %%exit:
+    func_exit
+    %pop
+%endmacro
+
 add_two_top_of_stack: ; add_two_top_of_stack(): void
     big_integers_do_op_two_top_of_stack BigInteger_add
+
+mult_two_top_of_stack: ; mult_two_top_of_stack(): void
+    big_integers_do_op_two_top_of_stack BigInteger_multiply
 
 and_two_top_of_stack: ; and_two_top_of_stack(): void
     big_integers_do_op_two_top_of_stack BigInteger_and
