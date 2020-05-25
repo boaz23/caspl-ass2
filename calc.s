@@ -152,6 +152,12 @@ MAX_LINE_LENGTH EQU 84
     mov %4, %1
 %endmacro
 
+; deref(p_res, p_src, reg, fld)
+%macro deref 4
+    mov %3, %2
+    mem_mov %3, %1, [%4(%3)]
+%endmacro
+
 section .rodata
     Err_StackOverflow: db 'Error: Operand Stack Overflow', NEW_LINE_TERMINATOR, NULL_TERMINATOR
     Err_StackUnderflow: db 'Error: Insufficient Number of Arguments on Stack', NEW_LINE_TERMINATOR, NULL_TERMINATOR
@@ -208,6 +214,7 @@ section .text
     global BigInteger_add
     global BigInteger_and
     global BigInteger_or
+    global BigInteger_shiftLeft
     global BigInteger_removeLeadingZeroes
     global insertByteAsHexToStringR
     global reverse_hex_string
@@ -2138,8 +2145,31 @@ BigInteger_shiftLeft: ; shiftLeft(BigInteger* n, int amount): void
     %define $n ebp+8
     %define $amount ebp+12
     ; ----- locals ------
+    %define $i ebp-4
     ; ----- body ------
+    func_entry 4
+    
+    ; i = 0;
+    mov dword [$i], 0
+    .loop: ; for (int i = 0; i < amount; i++)
+        ; if (i >= amount) break;
+        mov eax, dword [$amount]
+        cmp dword [$i], eax
+        jge .loop_end
 
+        ; ByteLink.addAtStart(n->list, 0)
+        mov eax, dword [$n]
+        void_call ByteLink_addAtStart, eax, 0
+
+        ; n->list_len++
+        mov eax, dword [$n]
+        inc dword [BigInteger_list_len(eax)]
+
+        ; i++
+        inc dword [$i]
+    .loop_end:
+
+    func_exit
     %pop
 
 BigInteger_toString: ; toString(BigInteger* n): char*

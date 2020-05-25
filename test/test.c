@@ -22,17 +22,18 @@ typedef struct BigInteger {
 } BigInteger;
 
 extern BigInteger* BigInteger_ctor(ByteLink *link, int LenHexDigits);
-extern void BigInteger_free(BigInteger *link);
-extern BigInteger* BigInteger_duplicate(BigInteger *link);
+extern void BigInteger_free(BigInteger *n);
+extern BigInteger* BigInteger_duplicate(BigInteger *n);
 
 extern BigInteger* BigInteger_parse(char *s);
-extern int BigInteger_getlistLen(BigInteger *bigInteger);
+extern int BigInteger_getlistLen(BigInteger *n);
 extern BigInteger* BigInteger_fromInt(int n);
-extern BigInteger* BigInteger_calcHexDigitsInteger(BigInteger *bigInteger);
+extern BigInteger* BigInteger_calcHexDigitsInteger(BigInteger *n);
 extern BigInteger* BigInteger_add(BigInteger *n1, BigInteger *n2);
 extern BigInteger* BigInteger_and(BigInteger *n1, BigInteger *n2);
 extern BigInteger* BigInteger_or(BigInteger *n1, BigInteger *n2);
-extern void BigInteger_removeLeadingZeroes(BigInteger *bigInteger);
+extern void BigInteger_shiftLeft(BigInteger *n, int amount);
+extern void BigInteger_removeLeadingZeroes(BigInteger *n);
 extern void insertByteAsHexToStringR(char *str, int b);
 extern void reverse_hex_string(char *str, int len);
 extern char *BigInteger_toString(BigInteger *link);
@@ -316,6 +317,8 @@ void test_BigInteger_fromInt2(){
     }
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
 void test_BigInteger_calcHexDigitsInteger1(){
     BigInteger *bigInt, *calcBigInt;
     ByteLink* list;
@@ -328,7 +331,7 @@ void test_BigInteger_calcHexDigitsInteger1(){
     if(calcBigInt != NULL){
         if(calcBigInt->list != NULL){
             if(calcBigInt->list->b != (char)len){
-                printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->b %c recive %c\n", (char)len, calcBigInt->list->b); 
+                printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->b %x recive %x\n", (char)len, calcBigInt->list->b); 
             }
             if(calcBigInt->list->next != NULL){
                 printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->next to be null \n"); 
@@ -349,6 +352,7 @@ void test_BigInteger_calcHexDigitsInteger1(){
         BigInteger_free(calcBigInt);
     }
 }
+#pragma GCC diagnostic pop
 
 void test_BigInteger_calcHexDigitsInteger2(){
     BigInteger *bigInt, *calcBigInt;
@@ -364,8 +368,8 @@ void test_BigInteger_calcHexDigitsInteger2(){
 
     if(calcBigInt != NULL){
         if(calcBigInt->list != NULL){
-            if(calcBigInt->list->b != (char)len){
-                printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->b %c recive %c\n", (char)len, calcBigInt->list->b); 
+            if(calcBigInt->list->b != 6){
+                printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->b %x recive %x\n", (char)len, calcBigInt->list->b); 
             }
             if(calcBigInt->list->next != NULL){
                 printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->next to be null \n"); 
@@ -401,12 +405,12 @@ void test_BigInteger_calcHexDigitsInteger3(){
 
     if(calcBigInt != NULL){
         if(calcBigInt->list != NULL){
-            if(calcBigInt->list->b != (char)0x62){
-                printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->b %c recive %x\n", (char)0x62, calcBigInt->list->b); 
+            if(calcBigInt->list->b != 0xc4){
+                printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->b %x recive %x\n", 0xc4, calcBigInt->list->b); 
             }
             if(calcBigInt->list->next != NULL){
-                if(calcBigInt->list->next->b != (char)0x01){
-                    printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->b %c recive %x\n", (char)0x01, calcBigInt->list->next->b); 
+                if(calcBigInt->list->next->b != 0x2){
+                    printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->b %c recive %x\n", 0x2, calcBigInt->list->next->b); 
                 }
                 if(calcBigInt->list->next->next != NULL){
                     printf("test_BigInteger_calcHexDigitsInteger expect calcBigInt->list->next to be null \n"); 
@@ -430,8 +434,6 @@ void test_BigInteger_calcHexDigitsInteger3(){
         BigInteger_free(calcBigInt);
     }
 }
-
-
 
 void parse_big_integer_tests(char *s) {
     BigInteger *n = BigInteger_parse(s);
@@ -462,6 +464,18 @@ void test_BigInteger_parse() {
     parse_big_integer_tests("32F56DC013");
     parse_big_integer_tests("00032F56DC013");
     parse_big_integer_tests("000032F56DC013");
+}
+
+void test_BigInteger_shiftLeft_n(BigInteger *n) {
+    BigInteger_shiftLeft(n, 1);
+}
+
+void test_BigInteger_shiftLeft() {
+    BigInteger *n = BigInteger_parse("01A7");
+    test_BigInteger_shiftLeft_n(n);
+    test_BigInteger_shiftLeft_n(n);
+    test_BigInteger_shiftLeft_n(n);
+    BigInteger_free(n);
 }
 
 void test_BigInteger_add1(){
@@ -892,6 +906,7 @@ int main(int argc, char **argv){
     test_BigInteger_and1();
     test_BigInteger_and2();
     test_BigInteger_or();
+    test_BigInteger_shiftLeft();
     test_BigInteger_removeLeadingZeroes();
     test_insertByteAsHexToStringR();
     test_BigInteger_duplicate();
