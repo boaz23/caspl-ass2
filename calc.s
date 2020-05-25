@@ -920,6 +920,10 @@ BigIntegerStack_free: ; free(BigIntegerStack* s): void
     ; ----- body ------
     func_entry
 
+    ; free all big integers in the stack
+    ; s->free_arr();
+    func_call eax, BigIntegerStack_free_arr, [$s]
+
     ; free(s->numbers);
     mov eax, [$s]
     func_call eax, free, [BigIntegerStack_numbers(eax)]
@@ -1054,6 +1058,33 @@ BigIntegerStack_isFull: ; isFull(BigStackInteger* s): boolean
 
     .exit:
     func_exit [$is_full]
+    %pop
+
+BigIntegerStack_free_arr: ; BigIntegerStack_free_arr(BigIntegerStack *s)
+    %push
+    ; ----- arguments -----
+    %define $s ebp+8
+    ; ----- locals -----
+    %define $p_number ebp-4
+    %define $has_items ebp-8
+    ; ----- body ------
+    func_entry 8
+    
+    .pop_loop: ; while (s->hasAtLeastItems(1))
+        ; if (s->hasAtLeastItems(1) != false) break;
+        func_call [$has_items], BigIntegerStack_hasAtLeastItems, [$s], 1
+        cmp dword [$has_items], FALSE
+        je .pop_loop_end
+
+        ; p_number = s->pop();
+        func_call [$p_number], BigIntegerStack_pop, [$s]
+        ; delete p_number;
+        func_call eax, BigInteger_free, [$p_number]
+
+        jmp .pop_loop
+    .pop_loop_end:
+
+    func_exit
     %pop
 
 ;------------------- class ByteLink -------------------
