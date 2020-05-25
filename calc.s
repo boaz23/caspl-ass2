@@ -2069,8 +2069,48 @@ BigInteger_multiply: ; multiply(BigInteger* n1, BigInteger* n2): BigInteger*
     %define $n1 ebp+8
     %define $n2 ebp+12
     ; ----- locals ------
+    %define $n_res ebp-4
+    %define $n_base ebp-8
+    %define $n_temp ebp-12
+    %define $n2_blink_curr ebp-16
     ; ----- body ------
+    func_entry 16
 
+    ; n_res = 0;
+    func_call [$n_res], BigInteger_makeZero
+    ; n_base = n1->duplicate();
+    func_call [$n_base], BigInteger_duplicate, [$n1]
+    ; n2_blink_curr = n2->list
+    deref [$n2_blink_curr], [$n2], eax, BigInteger_list
+
+    .loop: ; while (n2_blink_curr != NULL)
+        ; if (n2_blink_curr == NULL) break;
+        cmp dword [$n2_blink_curr], NULL
+        je .loop_end
+
+        %push
+        %assign $i 0
+        %rep 8
+            mov al, byte [ByteLink_b($current)]
+            bt eax, $i
+            jnc .bit_increment%[$i]
+            func_call [$n_temp], BigInteger_add, [$n_base], [$n_res]
+            void_call BigInteger_free, [$n_res]
+            mem_mov eax, [$n_res], [$n_temp]
+
+            .bit_increment%[$i]:
+            void_call BigInteger_shiftLeft, [$n_base]
+        %assign $i $i+1
+        %endrep
+        %pop
+
+        ; n2_blink_curr = n2_blink_curr->next;
+        deref [$n2_blink_curr], [$n2_blink_curr], eax, ByteLink_next
+        jmp .loop
+    .loop_end:
+    void_call BigInteger_free, [$n_base]
+
+    func_exit [$n_res]
     %pop
 
 BigInteger_removeLeadingZeroes: ; removeLeadingZeroes(BigInteger* n): void
@@ -2139,36 +2179,74 @@ BigInteger_removeLeadingZeroes: ; removeLeadingZeroes(BigInteger* n): void
     func_exit
     %pop
 
-BigInteger_shiftLeft: ; shiftLeft(BigInteger* n, int amount): void
+BigInteger_shiftLeft: ; shiftLeft(BigInteger* n): void
     %push
     ; ----- arguments -----
     %define $n ebp+8
-    %define $amount ebp+12
     ; ----- locals ------
-    %define $i ebp-4
+    %define $current_blink ebp-4
+    %define $prev_blink ebp-8
+    %define $carry ebp-12
+    %define $prev_carry ebp-16
+    %define $new_blink ebp-20
     ; ----- body ------
-    func_entry 4
+    func_entry 20
     
-    ; i = 0;
-    mov dword [$i], 0
-    .loop: ; for (int i = 0; i < amount; i++)
-        ; if (i >= amount) break;
-        mov eax, dword [$amount]
-        cmp dword [$i], eax
-        jge .loop_end
+    ; prev_blink = null;
+    mov dword [$prev_blink], NULL
+    ; current_blink = n->list;
+    deref [$current_blink], [$n], eax, BigInteger_list
+    ; carry = 0;
+    mov dword [$carry], 0
+    ; prev_carry = 0;
+    mov dword [$prev_carry], 0
 
-        ; ByteLink.addAtStart(n->list, 0)
-        mov eax, dword [$n]
-        void_call ByteLink_addAtStart, eax, 0
+    .loop: ; while (current_blink != NULL)
+        ; if (current_blink == NULL) break;
+        cmp dword [$current_blink], NULL
+        je .loop_end
 
-        ; n->list_len++
-        mov eax, dword [$n]
-        inc dword [BigInteger_list_len(eax)]
+        mov eax, [$current_blink]
+        shl byte [ByteLink_b(eax)], 1
+        jnc .no_carry
 
-        ; i++
-        inc dword [$i]
+        .carry:
+            mov dword [$carry], 1
+            jmp .rotate_carry
+        .no_carry:
+            mov dword [$carry], 0
+
+        .rotate_carry:
+        ; current->b |= prev_carry;
+        mov eax, dword [$current_blink]
+        mov ebx, dword [$prev_carry]
+        or byte [ByteLink_b(eax)], bl
+
+        ; prev_carry = carry;
+        mem_mov eax, [$prev_carry], [$carry]
+
+        ; prev_blink = current_blink;
+        mem_mov eax, [$prev_blink], [$current_blink]
+        ; current_blink = current_blink->next;
+        deref [$current_blink], [$current_blink], eax, ByteLink_next
+        jmp .loop
     .loop_end:
 
+    cmp dword [$carry], 0
+    je .exit
+
+    ; new_blink = new ByteLink(carry, null);
+    func_call [$new_blink], ByteLink_ctor, [$carry], NULL
+
+    ; prev_blink->next = new_blink;
+    mov eax, dword [$prev_blink]
+    mov ebx, dword [$new_blink]
+    mov dword [ByteLink_next(eax)], ebx
+
+    ; n->list_len++;
+    inc dword [BigInteger_list_len($n)]
+
+    .exit:
     func_exit
     %pop
 
@@ -2337,4 +2415,19 @@ reverse_hex_string: ;reverse_hex_string(char *str, int len)
 	.reverse_hex_string_loop_end:
 
     func_exit
+    %pop
+
+BigInteger_makeZero: ; BigInteger_makeZero(): BigInteger*
+    %push
+    ; ----- arguments -----
+    ; ----- locals ------
+    %define $n ebp-4
+    %define $b_list ebp-8
+    ; ----- body ------
+    func_entry 8
+
+    func_call [$b_list], ByteLink_ctor, 0, NULL
+    func_call [$n], BigInteger_ctor, [$b_list], 1
+
+    func_exit [$n]
     %pop

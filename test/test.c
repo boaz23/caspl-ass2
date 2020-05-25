@@ -32,7 +32,7 @@ extern BigInteger* BigInteger_calcHexDigitsInteger(BigInteger *n);
 extern BigInteger* BigInteger_add(BigInteger *n1, BigInteger *n2);
 extern BigInteger* BigInteger_and(BigInteger *n1, BigInteger *n2);
 extern BigInteger* BigInteger_or(BigInteger *n1, BigInteger *n2);
-extern void BigInteger_shiftLeft(BigInteger *n, int amount);
+extern void BigInteger_shiftLeft(BigInteger *n);
 extern void BigInteger_removeLeadingZeroes(BigInteger *n);
 extern void insertByteAsHexToStringR(char *str, int b);
 extern void reverse_hex_string(char *str, int len);
@@ -467,11 +467,17 @@ void test_BigInteger_parse() {
 }
 
 void test_BigInteger_shiftLeft_n(BigInteger *n) {
-    BigInteger_shiftLeft(n, 1);
+    BigInteger_shiftLeft(n);
 }
 
 void test_BigInteger_shiftLeft() {
-    BigInteger *n = BigInteger_parse("01A7");
+    BigInteger *n = BigInteger_parse("00A7");
+    test_BigInteger_shiftLeft_n(n);
+    test_BigInteger_shiftLeft_n(n);
+    test_BigInteger_shiftLeft_n(n);
+    test_BigInteger_shiftLeft_n(n);
+    test_BigInteger_shiftLeft_n(n);
+    test_BigInteger_shiftLeft_n(n);
     test_BigInteger_shiftLeft_n(n);
     test_BigInteger_shiftLeft_n(n);
     test_BigInteger_shiftLeft_n(n);
@@ -505,7 +511,7 @@ void test_BigInteger_add1(){
                             printf("test_BigInteger_add expect add->list->b: %c recive %c\n", n2c1, add->list->next->b);   
                         }
                     } else {
-                        printf("test_BigInteger_add senond link is null\n");  
+                        printf("test_BigInteger_add second link is null\n");  
                     }
                 }
             } else {
