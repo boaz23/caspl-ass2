@@ -2,15 +2,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef unsigned char byte;
+
 /* ByteLink */
 typedef struct ByteLink{
-    char b;
+    byte b;
     struct ByteLink* next;
 } __attribute__((packed, aligned(1))) ByteLink;
 
-extern ByteLink* ByteLink_ctor(char b, ByteLink* next);
-extern void ByteLink_addAtStart(ByteLink** link, char b);
-extern char * ByteLink_freeList(ByteLink* list);
+extern ByteLink* ByteLink_ctor(byte b, ByteLink* next);
+extern void ByteLink_addAtStart(ByteLink** link, byte b);
+extern void ByteLink_freeList(ByteLink* list);
 extern ByteLink* ByteLink_duplicate(ByteLink* list);
 
 /* BigInterger */
@@ -23,6 +25,7 @@ extern BigInteger* BigInteger_ctor(ByteLink *link, int LenHexDigits);
 extern void BigInteger_free(BigInteger *link);
 extern BigInteger* BigInteger_duplicate(BigInteger *link);
 
+extern BigInteger* BigInteger_parse(char *s);
 extern int BigInteger_getlistLen(BigInteger *bigInteger);
 extern BigInteger* BigInteger_add(BigInteger *n1, BigInteger *n2);
 extern BigInteger* BigInteger_and(BigInteger *n1, BigInteger *n2);
@@ -126,7 +129,7 @@ void test_set_run_settings_from_args_args(int argc, char *argv[]) {
 }
 void test_set_run_settings_from_args() {
     char *s[] = {
-        "filler", "-d"
+        "filler", "1A", "-d"
     };
     test_set_run_settings_from_args_args(2, s);
 }
@@ -134,7 +137,7 @@ void test_set_run_settings_from_args() {
 void test_same_Bytelink(ByteLink *current, ByteLink *dupCurrent, char *funcName);
 
 void test_ByteLink_ctor(){
-    char c = 65; //A
+    byte c = 65; //A
     ByteLink* bl = ByteLink_ctor(c, NULL);
     if(bl == NULL){
         printf("test_ByteLink_ctor ctor return null\n");
@@ -150,7 +153,7 @@ void test_ByteLink_ctor(){
 
 /* Assume ByteLink_ctor works */
 extern void test_ByteLink_addAtStart(){
-    char c1 = 0x0A, c2 = 0XC9;
+    byte c1 = 0x0A, c2 = 0XC9;
     ByteLink* blist = ByteLink_ctor(c1, NULL);
     if(blist == NULL){
         printf("ByteLink_addAtStart error at malloc\n");
@@ -177,8 +180,10 @@ extern void test_ByteLink_addAtStart(){
     ByteLink_freeList(blist);
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
 void test_ByteLink_duplicate(){
-    char c1 = 65, c2 = 99; //A, c
+    byte c1 = 65, c2 = 99; //A, c
     ByteLink* bl = ByteLink_ctor(c1, NULL);
     ByteLink* dup;
     int bloop = 0;
@@ -192,6 +197,7 @@ void test_ByteLink_duplicate(){
     ByteLink_freeList(bl);
     ByteLink_freeList(dup);
 }
+#pragma GCC diagnostic pop
 
 void test_same_Bytelink(ByteLink *current, ByteLink *dupCurrent, char *funcName){
     int bloop = 0;
@@ -241,11 +247,42 @@ void test_insertByteAsHexToStringR(){
     free(str);
 }
 
+void parse_big_integer_tests(char *s) {
+    BigInteger *n = BigInteger_parse(s);
+    BigInteger_free(n);
+}
+void test_BigInteger_parse() {
+    parse_big_integer_tests("F3");
+    parse_big_integer_tests("000F3");
+    parse_big_integer_tests("0000F3");
+    parse_big_integer_tests("A");
+    parse_big_integer_tests("000A");
+    parse_big_integer_tests("0000A");
+    parse_big_integer_tests("1F2");
+    parse_big_integer_tests("0001F2");
+    parse_big_integer_tests("00001F2");
+    parse_big_integer_tests("21F1");
+    parse_big_integer_tests("00021F1");
+    parse_big_integer_tests("000021F1");
+    parse_big_integer_tests("100");
+    parse_big_integer_tests("000100");
+    parse_big_integer_tests("0000100");
+    parse_big_integer_tests("0");
+    parse_big_integer_tests("00000");
+    parse_big_integer_tests("000000");
+    parse_big_integer_tests("2F56DC013");
+    parse_big_integer_tests("0002F56DC013");
+    parse_big_integer_tests("00002F56DC013");
+    parse_big_integer_tests("32F56DC013");
+    parse_big_integer_tests("00032F56DC013");
+    parse_big_integer_tests("000032F56DC013");
+}
+
 void test_BigInteger_add1(){
     BigInteger *n1, *n2, *add;
     ByteLink* n1list, *n2list; 
-    char n1c1 = 0x12, n1c2 = 0XC9;
-    char n2c1 = 0x00;
+    byte n1c1 = 0x12, n1c2 = 0XC9;
+    byte n2c1 = 0x00;
 
     n1list = ByteLink_ctor(n1c2, NULL);
     ByteLink_addAtStart(&n1list, n1c1);
@@ -290,8 +327,8 @@ void test_BigInteger_add1(){
 void test_BigInteger_add2(){
     BigInteger *n1, *n2, *add;
     ByteLink* n1list, *n2list; 
-    char n1c1 = 0xB0;
-    char n2c1 = 0xB0;
+    byte n1c1 = 0xB0;
+    byte n2c1 = 0xB0;
 
     n1list = ByteLink_ctor(n1c1, NULL);
     n1 = BigInteger_ctor(n1list, 1);
@@ -305,11 +342,11 @@ void test_BigInteger_add2(){
     if(add != NULL){
         if(add->len == 2){
             if(add->list != NULL){
-                if(add->list->b != (char)0x60){
+                if(add->list->b != (byte)0x60){
                     printf("test_BigInteger_add expect add->list->b: %c recive %c\n", n1c1, add->list->b);
                 } else {
                     if(add->list->next != NULL){
-                        if(add->list->next->b != (char)0x01){
+                        if(add->list->next->b != (byte)0x01){
                             printf("test_BigInteger_add expect add->list->b: %c recive %c\n", n2c1, add->list->next->b);
                         }
                     } else {
@@ -335,8 +372,8 @@ void test_BigInteger_add2(){
 void test_BigInteger_and1(){
     BigInteger *n1, *n2, *and;
     ByteLink* n1list, *n2list; 
-    char n1c1 = 0x12, n1c2 = 0XC9;
-    char n2c1 = 0x00;
+    byte n1c1 = 0x12, n1c2 = 0XC9;
+    byte n2c1 = 0x00;
 
     n1list = ByteLink_ctor(n1c2, NULL);
     ByteLink_addAtStart(&n1list, n1c1);
@@ -377,8 +414,8 @@ void test_BigInteger_and1(){
 void test_BigInteger_and2(){
     BigInteger *n1, *n2, *and;
     ByteLink* n1list, *n2list; 
-    char n1c1 = 0xB0, n1c2 = 0xC0;
-    char n2c1 = 0xB0, n2c2 = 0x0C;
+    byte n1c1 = 0xB0, n1c2 = 0xC0;
+    byte n2c1 = 0xB0, n2c2 = 0x0C;
 
     n1list = ByteLink_ctor(n1c2, NULL);
     ByteLink_addAtStart(&n1list, n1c1);
@@ -394,7 +431,7 @@ void test_BigInteger_and2(){
     if(and != NULL){
         if(and->len == 1){
             if(and->list != NULL){
-                if(and->list->b != (char)0xB0){
+                if(and->list->b != (byte)0xB0){
                     printf("test_BigInteger_add2 expect add->list->b: %x recive %x\n", 0xB0, and->list->b);
                 } else {
                     if(and->list->next != NULL){
@@ -420,8 +457,8 @@ void test_BigInteger_and2(){
 void test_BigInteger_or(){
     BigInteger *n1, *n2, *or;
     ByteLink* n1list, *n2list; 
-    char n1c1 = 0xB0, n1c2 = 0xC0;
-    char n2c1 = 0x00, n2c2 = 0x01;
+    byte n1c1 = 0xB0, n1c2 = 0xC0;
+    byte n2c1 = 0x00, n2c2 = 0x01;
 
     n1list = ByteLink_ctor(n1c2, NULL);
     ByteLink_addAtStart(&n1list, n1c1);
@@ -437,11 +474,11 @@ void test_BigInteger_or(){
     if(or != NULL){
         if(or->len == 2){
             if(or->list != NULL){
-                if(or->list->b != (char)0xB0){
+                if(or->list->b != (byte)0xB0){
                     printf("test_BigInteger_or expect add->list->b: %x recive %x\n", 0xB0, or->list->b);
                 } else {
                     if(or->list->next != NULL){
-                        if(or->list->next->b != (char)0xC1){
+                        if(or->list->next->b != (byte)0xC1){
                             printf("test_BigInteger_or expect add->list->b: %x recive %x\n", 0xC1, or->list->next->b);
                         }
                     } else {
@@ -466,7 +503,7 @@ void test_BigInteger_or(){
 
 void test_BigInteger_removeLeadingZeroes(){
     BigInteger* bigInt;
-    char c1 = 0x65, c2 = 0X00, c3 = 0x00;
+    byte c1 = 0x65, c2 = 0X00, c3 = 0x00;
     ByteLink* blist = ByteLink_ctor(c3, NULL);
     ByteLink_addAtStart(&blist,c2);
     ByteLink_addAtStart(&blist,c1);
@@ -501,7 +538,7 @@ void test_BigInteger_removeLeadingZeroes(){
 void test_BigInteger_getlistLen(){
     BigInteger* bigInt;
     int len = -1;
-    char c1 = 0x12, c2 = 0XC9, c3 = 0x0A;
+    byte c1 = 0x12, c2 = 0XC9, c3 = 0x0A;
     ByteLink* blist = ByteLink_ctor(c3, NULL);
     ByteLink_addAtStart(&blist,c2);
     ByteLink_addAtStart(&blist,c1);
@@ -521,7 +558,7 @@ void test_BigInteger_getlistLen(){
 void test_BigInteger_duplicate(){
     BigInteger* bigInt, *dup;
     int len = -1;
-    char c1 = 0x12, c2 = 0XC9, c3 = 0x0A;
+    byte c1 = 0x12, c2 = 0XC9, c3 = 0x0A;
     ByteLink* blist = ByteLink_ctor(c3, NULL);
     ByteLink_addAtStart(&blist,c2);
     ByteLink_addAtStart(&blist,c1);
@@ -569,7 +606,7 @@ void test_reverse_hex_string(){
 void test_BigInteger_toString(){
     BigInteger* bigInt;
     char *str;
-    char c1 = 0x12, c2 = 0XC9, c3 = 0x0A;
+    byte c1 = 0x12, c2 = 0XC9, c3 = 0x0A;
     ByteLink* blist = ByteLink_ctor(c3, NULL);
     ByteLink_addAtStart(&blist,c2);
     ByteLink_addAtStart(&blist,c1);
@@ -588,12 +625,14 @@ void test_BigInteger_toString(){
     BigInteger_free(bigInt);
 }
 
-BigInteger* mock_big_integer(unsigned char c) {
-    ByteLink *b_link = ByteLink_ctor((char)c, NULL);
+BigInteger* mock_big_integer(byte c) {
+    ByteLink *b_link = ByteLink_ctor(c, NULL);
     BigInteger *n = BigInteger_ctor(b_link, 1);
     return n;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 void test_BigIntegerStack() {
     BigInteger *n = NULL;
     int res;
@@ -643,6 +682,7 @@ void test_BigIntegerStack() {
 
     BigIntegerStack_free(s);
 }
+#pragma GCC diagnostic pop
 
 int main(int argc, char **argv){
     test_set_run_settings_from_args();
@@ -652,6 +692,8 @@ int main(int argc, char **argv){
     test_ByteLink_ctor();
     test_ByteLink_addAtStart();
     test_ByteLink_duplicate();
+
+    test_BigInteger_parse();
 
     test_BigInteger_getlistLen();
     test_BigInteger_add1();
