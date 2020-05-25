@@ -970,6 +970,8 @@ BigIntegerStack_pop: ; pop(BigStackInteger* s): BigInteger*
     mov eax, [$s]
     dec dword [BigIntegerStack_sp(eax)]
 
+    dbg_print_big_integer [$n], "Popped number: "
+
     func_exit [$n]
     %pop
 
