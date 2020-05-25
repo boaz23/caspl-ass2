@@ -1583,6 +1583,9 @@ BigInteger_calcHexDigitsInteger: ; calcHexDigitsInteger(BigInteger* n): BigInteg
 
     .len_bigger_than_1:
 
+    ;hexlen = hexlen * 2
+    shl dword [$hexlen], 1
+
     ;while(current->next != NULL)
     .get_to_last_link_loop_start:
         mov eax, dword [$currentlink]
