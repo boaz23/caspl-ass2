@@ -177,6 +177,7 @@ section .text
     global BigInteger_duplicate
     global BigInteger_fromInt
     global BigInteger_calcHexDigitsInteger
+    global BigInteger_parse
     global BigInteger_getlistLen
     global BigInteger_add
     global BigInteger_and
@@ -351,6 +352,7 @@ myCalc: ; myCalc(): int
         cmp byte [eax], NEW_LINE_TERMINATOR
         jne .act
         mov byte [eax], NULL_TERMINATOR
+        dec dword [$p_last_char]
 
         .act:
         ; c = buf[0]
@@ -408,7 +410,7 @@ myCalc: ; myCalc(): int
             printf_line "Parse number"
             lea eax, [$buf]
             func_call eax, parse_push_big_integer, eax
-            jmp .inp_loop_continue
+            jmp .input_loop
 
         .inp_loop_continue:
         inc dword [$operations_count]
@@ -645,63 +647,66 @@ try_parse_arg_hex_string_num: ; try_parse_arg_hex_string_num(char *arg): int
     ; ----- arguments -----
     %define $arg ebp+8
     ; ----- locals -----
-    ; boolean is_hex_num
     %define $num ebp-4
     %define $plc ebp-8
-    %define $pc ebp-12
-    %define $c ebp-13
-    %define $c_num_val ebp-14
     ; ----- body ------
-    func_entry 14
+    func_entry 8
 
     ; num = 0;
     mov dword [$num], 0
     
     ; plc = str_last_char(arg);
     func_call [$plc], str_last_char, [$arg]
-    ; pc = arg;
-    mem_mov eax, [$pc], [$arg]
+    ; num = parse_hex_string_to_num(arg, plc);
+    func_call [$num], parse_hex_string_to_num, [$arg], [$plc]
 
-    ; if (plc < pc) goto invalid_num;
-    mov eax, [$pc]
-    cmp [$plc], eax
+    .exit:
+    func_exit [$num]
+    %pop
+
+parse_hex_string_to_num: ; parse_hex_string_to_num(char *p_start, char *p_end): int
+    %push
+    ; ----- arguments -----
+    %define $p_start ebp+8
+    %define $p_end ebp+12
+    ; ----- locals -----
+    %define $num ebp-4
+    %define $pc ebp-8
+    %define $c_num_val ebp-12
+    ; ----- body ------
+    func_entry 12
+    
+    ; if (p_end < p_start) goto invalid_num;
+    mov eax, dword [$p_start]
+    cmp dword [$p_end], eax
     jl .invalid_num
 
-    .conversion_loop: ; do { ... } while(pc >= arg);
-        ; c = *pc;
-        mov eax, dword [$pc]
-        mem_mov al, byte [$c], byte [eax]
-        
-        shl dword [$num], 4
-        
-        cmp_char_in_range byte [$c], 'A', 'F', .convert_hex_letter  ; if ('A' <= c && c <= 'F') goto convert_hex_letter;
-        cmp_char_in_range byte [$c], '0', '9', .convert_dec_digit   ; else if ('0' <= c && c <= '9') goto convert_dec_digit;
-        jmp .invalid_num                                            ; else { goto invalid_num; }
+    ; num = 0;
+    mov dword [$num], 0
+    ; pc = p_start;
+    mem_mov eax, [$pc], [$p_start]
 
-        .convert_hex_letter:
-            ; c_num_val = c - ('A' - 10);
-            mov al, byte [$c]
-            sub al, 'A'-10
-            mov byte [$c_num_val], al
-            jmp .add_digit
-        .convert_dec_digit:
-            ; c_num_val = c - '0';
-            mov al, byte [$c]
-            sub al, '0'
-            mov byte [$c_num_val], al
-            jmp .add_digit
+    .conversion_loop: ; do { ... } while(pc <= plc);
+        shl dword [$num], 4
+
+        ; c_num_val = convert_char_hex_digit_to_byte(pc);
+        func_call [$c_num_val], convert_char_hex_digit_to_byte, [$pc]
+
+        ; if (c_num_val < 0) goto invalid_num;
+        cmp dword [$c_num_val], 0
+        jl .invalid_num
 
         .add_digit:
             ; num |= c_num_val;
             mov al, byte [$c_num_val]
-            or byte [$num+0], al
+            or byte [$num], al
 
         .conversion_loop_increment:
-        inc dword [$pc] ; pc--;
+        inc dword [$pc] ; pc++;
 
         .conversion_loop_condition:
-        ; if (pc <= plc) loop;
-        mov eax, dword [$plc]
+        ; if (pc <= p_end) continue;
+        mov eax, dword [$p_end]
         cmp dword [$pc], eax
         jle .conversion_loop
     .conversion_loop_end:
@@ -712,6 +717,78 @@ try_parse_arg_hex_string_num: ; try_parse_arg_hex_string_num(char *arg): int
 
     .exit:
     func_exit [$num]
+    %pop
+
+convert_char_hex_digit_to_byte: ; convert_char_hex_digit_to_byte(char *pc): byte
+    %push
+    ; ----- arguments -----
+    %define $pc ebp+8
+    ; ----- locals -----
+    %define $c ebp-1
+    %define $c_num_val ebp-5
+    ; ----- body ------
+    func_entry 5
+    
+    ; c_num_val = 0;
+    mov dword [$c_num_val], 0
+
+    ; c = *pc;
+    mov eax, dword [$pc]
+    mem_mov al, byte [$c], byte [eax]
+    
+    ; if      ('A' <= c && c <= 'F') goto convert_hex_letter;
+    ; else if ('a' <= c && c <= 'f') goto convert_hex_lowercase_letter;
+    ; else if ('0' <= c && c <= '9') goto convert_dec_digit;
+    ; else { goto invalid_char; }
+    cmp_char_in_range byte [$c], 'A', 'F', .convert_hex_uppercase_letter
+    cmp_char_in_range byte [$c], 'A', 'F', .convert_hex_lowercase_letter
+    cmp_char_in_range byte [$c], '0', '9', .convert_dec_digit
+    jmp .invalid_char
+
+    .convert_hex_uppercase_letter:
+        ; c_num_val = c - ('A' - 10);
+        mov al, byte [$c]
+        sub al, 'A'-10
+        mov byte [$c_num_val], al
+        jmp .exit
+    .convert_hex_lowercase_letter:
+        ; c_num_val = c - ('a' - 10);
+        mov al, byte [$c]
+        sub al, 'a'-10
+        mov byte [$c_num_val], al
+        jmp .exit
+    .convert_dec_digit:
+        ; c_num_val = c - '0';
+        mov al, byte [$c]
+        sub al, '0'
+        mov byte [$c_num_val], al
+        jmp .exit
+
+    .invalid_char:
+    ; c_num_val = -1;
+    mov dword [$c_num_val], -1
+
+    .exit:
+    func_exit [$c_num_val]
+    %pop
+
+convert_two_hex_digits_to_byte: ; convert_two_hex_digits_to_byte(char *pc): byte
+    %push
+    ; ----- arguments -----
+    %define $pc ebp+8
+    ; ----- locals ------
+    %define $b_val ebp-4
+    ; ----- body ------
+    func_entry 4
+
+    ; eax = pc + 1;
+    mov eax, dword [$pc]
+    inc dword eax
+
+    ; b_val = parse_hex_string_to_num(pc, eax);
+    func_call [$b_val], parse_hex_string_to_num, [$pc], eax
+
+    func_exit [$b_val]
     %pop
 
 str_last_char: ; str_last_char(char *s): char*
@@ -741,6 +818,37 @@ str_last_char: ; str_last_char(char *s): char*
     func_exit [$pc]
     %pop
 
+str_ignore_leading_zeroes: ; str_ignore_leading_zeroes(char *p_start, char *p_end): char*
+    %push
+    ; ----- arguments -----
+    %define $p_start ebp+8
+    %define $p_end ebp+12
+    ; ----- locals ------
+    %define $p_c ebp-4
+    ; ----- body ------
+    func_entry 4
+
+    ; p_c = s;
+    mem_mov eax, [$p_c], [$p_start]
+    .ignore_leading_zeroes_loop: ; while (p_c <= p_end && *p_c == '0')
+        ; loop condition
+        ; if (p_c > p_end) break;
+        mov eax, [$p_c]
+        cmp eax, dword [$p_end]
+        jg .ignore_leading_zeroes_loop_end
+        ; if (*p_c != '0') break;
+        mov eax, dword [$p_c]
+        cmp byte [eax], '0'
+        jne .ignore_leading_zeroes_loop_end
+
+        ; loop increment
+        inc dword [$p_c] ; p_c++;
+        jmp .ignore_leading_zeroes_loop
+    .ignore_leading_zeroes_loop_end:
+
+    func_exit [$p_c]
+    %pop
+
 ;------------------- class BigIntegerStack -------------------
 %ifdef COMMENT
 ;class BigIntegerStack {
@@ -763,7 +871,6 @@ sizeof_BigIntegerStack EQU 12
 %define BigIntegerStack_capacity(s) s+4
 %define BigIntegerStack_sp(s) s+8
 
-; TODO: delete this mock code and actually implement
 BigIntegerStack_ctor: ; ctor(int capacity): BigInteger*
     %push
     ; ----- arguments -----
@@ -1072,7 +1179,7 @@ ByteLink_duplicate: ; duplicate(ByteLink *list): ByteLink*
     func_exit [$duplist]
     %pop
 
-ByteLink_addAtStart: ; ByteLink_addAsNext(ByteLink** list, byte b): void
+ByteLink_addAtStart: ; ByteLink_addAtStart(ByteLink** list, byte b): void
     %push
     ; ----- arguments -----
     %define $list ebp+8
@@ -1268,8 +1375,106 @@ BigInteger_parse: ; parse(char *s): BigInteger*
     ; ----- arguments -----
     %define $s ebp+8
     ; ----- locals ------
+    %define $big_int ebp-4
+    %define $b_list ebp-8
+    %define $b_list_len ebp-12
+    %define $ps_last_c ebp-16
+    %define $ps_start_c ebp-20
+    %define $pc ebp-24
+    %define $c_num_val ebp-28
+    %define $b_val ebp-32
     ; ----- body ------
+    func_entry 32
+    
+    ; b_list = null;
+    mov dword [$b_list], NULL
+    ; b_list_len = 0;
+    mov dword [$b_list_len], 0
 
+    ; ps_last_c = str_last_char(s);
+    func_call [$ps_last_c], str_last_char, [$s]
+
+    ; ignore leading zeroes
+    ; ps_start_c = str_ignore_leading_zeroes(s, ps_last_c)
+    func_call [$ps_start_c], str_ignore_leading_zeroes, [$s], [$ps_last_c]
+    ; pc = ps_start_c;
+    mem_mov eax, [$pc], [$ps_start_c]
+
+    ; if (ps_start_c <= ps_last_c) goto non_zero;
+    mov eax, [$ps_start_c]
+    cmp eax, dword [$ps_last_c]
+    jle .non_zero
+    
+    .zero:
+        ; b_list = new ByteLink(0, null);
+        func_call [$b_list], ByteLink_ctor, 0, NULL
+        mov dword [$b_list_len], 1
+        jmp .construct_big_int
+
+    .non_zero:
+    ; remember that ps_last_c is the pointer to the last character,
+    ; so the length of the string is (ps_last_c - ps_start_c + 1)
+    ; if ((ps_last_c - ps_start_c) % 2 == 1) goto even_len_inp
+    mov eax, dword [$ps_last_c]
+    sub eax, dword [$ps_start_c]
+    test eax, 1
+    jz .odd_len_inp
+
+    .even_len_inp:
+        jmp .parse_loop
+
+    .odd_len_inp:
+        ; c_num_val = convert_char_hex_digit_to_byte(pc);
+        func_call [$c_num_val], convert_char_hex_digit_to_byte, [$ps_start_c]
+        ; if (c_num_val < 0) goto invalid_num;
+        cmp dword [$c_num_val], 0
+        jl .invalid_num
+
+        ; pc++;
+        inc dword [$pc]
+        ; b_val = c_num_val;
+        mem_mov eax, [$b_val], [$c_num_val]
+    
+    .create_first_link:
+    ; b_list = new ByteLink(b_val, null);
+    func_call [$b_list], ByteLink_ctor, [$b_val], NULL
+    ; b_list_len++;
+    inc dword [$b_list_len]
+
+    .parse_loop: ; while (pc < ps_last_c)
+        ; loop condition
+        ; if (pc >= ps_last_c) break;
+        mov eax, dword [$ps_last_c]
+        cmp dword [$pc], eax
+        jge .parse_loop_end
+
+        ; loop body
+        ; b_val = convert_two_hex_digits_to_byte(pc);
+        func_call [$b_val], convert_two_hex_digits_to_byte, [$pc]
+        ; if (b_val < 0) goto invalid_num;
+        cmp dword [$b_val], 0
+        jl .invalid_num
+        
+        ; b_list = ByteLink.addAtStart(&b_list, b_val);
+        lea eax, [$b_list]
+        func_call eax, ByteLink_addAtStart, eax, [$b_val]
+        ; b_list_len++;
+        inc dword [$b_list_len]
+
+        ; loop increment
+        add dword [$pc], 2
+        jmp .parse_loop
+    .parse_loop_end:
+    
+    .construct_big_int:
+    func_call [$big_int], BigInteger_ctor, [$b_list], [$b_list_len]
+    jmp .exit
+
+    .invalid_num:
+    mov dword [$big_int], NULL
+
+    .exit:
+    func_exit [$big_int]
     %pop
 
 BigInteger_fromInt: ; fromInt(int n): BigInteger*
@@ -1978,12 +2183,12 @@ reverse_hex_string: ;reverse_hex_string(char *str, int len)
 	; k = hex_len - 1
 	mov eax, dword [$len]
 	dec eax
-	reverse_hex_string_loop: ; while (i < k)
+	.reverse_hex_string_loop: ; while (i < k)
 		; condition check
 		; if (eax < ebx) break;
         mov [$index], eax
 		cmp eax, ebx
-		jl reverse_hex_string_loop_end
+		jl .reverse_hex_string_loop_end
 		; body
 		; swap(&str[i], &str[k])
         
@@ -2008,8 +2213,8 @@ reverse_hex_string: ;reverse_hex_string(char *str, int len)
 		; loop increment
 		inc ebx
 		dec eax
-		jmp reverse_hex_string_loop
-	reverse_hex_string_loop_end:
+		jmp .reverse_hex_string_loop
+	.reverse_hex_string_loop_end:
 
     func_exit
     %pop
