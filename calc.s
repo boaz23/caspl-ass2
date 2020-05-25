@@ -291,6 +291,15 @@ main: ; main(int argc, char *argv[], char *envp[]): int
     %%else:
 %endmacro
 
+%macro dbg_printf_line 1-*
+    ; if (DebugMode) printf(args);
+    cmp dword [DebugMode], FALSE
+    je %%else
+    ; print info
+    printf_line %{1:-1}
+    %%else:
+%endmacro
+
 %macro big_integers_do_op_two_top_of_stack 1
     %push
     ; ----- arguments -----
@@ -366,48 +375,48 @@ myCalc: ; myCalc(): int
             
         .inp_print:
             cmp_char byte [$c], 'p', .inp_hex_digits_len
-            printf_line "Print number"
+            dbg_printf_line "Print number"
             func_call eax, print_top_stack_number
             jmp .inp_loop_continue
 
         .inp_hex_digits_len:
             cmp_char byte [$c], 'n', .inp_duplicate
-            printf_line "Print number of hex digits"
+            dbg_printf_line "Print number of hex digits"
             func_call eax, push_top_stack_number_hex_digits_amount
             jmp .inp_loop_continue
 
         .inp_duplicate:
             cmp_char byte [$c], 'd', .inp_add
-            printf_line "Duplicate"
+            dbg_printf_line "Duplicate"
             func_call eax, duplicate_top_stack_number
             jmp .inp_loop_continue
 
         ; number operations
         .inp_add:
             cmp_char byte [$c], '+', .inp_multiply
-            printf_line "Add"
+            dbg_printf_line "Add"
             func_call eax, add_two_top_of_stack
             jmp .inp_loop_continue
 
         .inp_multiply:
             cmp_char byte [$c], '*', .inp_bitwise_and
-            printf_line "Multiplication is not supported"
+            dbg_printf_line "Multiplication is not supported"
             jmp .inp_loop_continue
 
         .inp_bitwise_and:
             cmp_char byte [$c], '&', .inp_bitwise_or
-            printf_line "Bitwise end"
+            dbg_printf_line "Bitwise and"
             func_call eax, and_two_top_of_stack
             jmp .inp_loop_continue
 
         .inp_bitwise_or:
             cmp_char byte [$c], '|', .inp_parse_number
-            printf_line "Bitwise or"
+            dbg_printf_line "Bitwise or"
             func_call eax, or_two_top_of_stack
             jmp .inp_loop_continue
             
         .inp_parse_number:
-            printf_line "Parse number"
+            dbg_printf_line "Parse number"
             lea eax, [$buf]
             func_call eax, parse_push_big_integer, eax
             jmp .input_loop
