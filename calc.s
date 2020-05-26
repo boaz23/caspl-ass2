@@ -212,6 +212,7 @@ section .text
     global BigInteger_parse
     global BigInteger_getlistLen
     global BigInteger_add
+    global BigInteger_multiply
     global BigInteger_and
     global BigInteger_or
     global BigInteger_shiftLeft
@@ -2096,15 +2097,28 @@ BigInteger_multiply: ; multiply(BigInteger* n1, BigInteger* n2): BigInteger*
         %assign $i 0
         %rep 8
             .bit_test%[$i]:
+            ; al = n2_blink_curr->b;
             mov ebx, [$n2_blink_curr]
             mov al, byte [ByteLink_b(ebx)]
+
+            ; carry flag = eax[i]
+            ; another way to think of this is: treat eax as an array of bits, take the i'th one
+            ; and put it in the carry flag
             bt eax, $i
-            jnc .bit_increment%[$i]
+            ; if (carry flag == 0) skip add;
+            ; or to put it on another way:
+            ; if ((eax & (1 << i)) == 0) skip add;
+            jnc .bit_shift%[$i]
+
+            ; n_temp = BigInteger.add(n_base, n_res);
             func_call [$n_temp], BigInteger_add, [$n_base], [$n_res]
+            ; BigInteger.free(n_res);
             void_call BigInteger_free, [$n_res]
+            ; n_res = n_temp;
             mem_mov eax, [$n_res], [$n_temp]
 
-            .bit_increment%[$i]:
+            .bit_shift%[$i]:
+            ; n_base <<= 1;
             void_call BigInteger_shiftLeft, [$n_base]
         %assign $i $i+1
         %endrep
@@ -2212,14 +2226,19 @@ BigInteger_shiftLeft: ; shiftLeft(BigInteger* n): void
         cmp dword [$current_blink], NULL
         je .loop_end
 
+        ; carray flag = MSB(current_blink->b)
+        ; current_blink->b <<= 1;
         mov eax, [$current_blink]
         shl byte [ByteLink_b(eax)], 1
+        ; if (carry flag == 0) goto no_carry
         jnc .no_carry
 
         .carry:
+            ; carry = 1;
             mov dword [$carry], 1
             jmp .rotate_carry
         .no_carry:
+            ; carry = 0;
             mov dword [$carry], 0
 
         .rotate_carry:
@@ -2250,7 +2269,8 @@ BigInteger_shiftLeft: ; shiftLeft(BigInteger* n): void
     mov dword [ByteLink_next(eax)], ebx
 
     ; n->list_len++;
-    inc dword [BigInteger_list_len($n)]
+    mov eax, dword [$n]
+    inc dword [BigInteger_list_len(eax)]
 
     .exit:
     func_exit

@@ -30,6 +30,7 @@ extern int BigInteger_getlistLen(BigInteger *n);
 extern BigInteger* BigInteger_fromInt(int n);
 extern BigInteger* BigInteger_calcHexDigitsInteger(BigInteger *n);
 extern BigInteger* BigInteger_add(BigInteger *n1, BigInteger *n2);
+extern BigInteger* BigInteger_multiply(BigInteger *n1, BigInteger *n2);
 extern BigInteger* BigInteger_and(BigInteger *n1, BigInteger *n2);
 extern BigInteger* BigInteger_or(BigInteger *n1, BigInteger *n2);
 extern void BigInteger_shiftLeft(BigInteger *n);
@@ -466,22 +467,33 @@ void test_BigInteger_parse() {
     parse_big_integer_tests("000032F56DC013");
 }
 
-void test_BigInteger_shiftLeft_n(BigInteger *n) {
-    BigInteger_shiftLeft(n);
+void test_BigInteger_shiftLeft_n(BigInteger *n, int amount) {
+    for (int i = 0; i < amount; ++i) {
+        BigInteger_shiftLeft(n);
+    }
 }
 
 void test_BigInteger_shiftLeft() {
-    BigInteger *n = BigInteger_parse("00A7");
-    test_BigInteger_shiftLeft_n(n);
-    test_BigInteger_shiftLeft_n(n);
-    test_BigInteger_shiftLeft_n(n);
-    test_BigInteger_shiftLeft_n(n);
-    test_BigInteger_shiftLeft_n(n);
-    test_BigInteger_shiftLeft_n(n);
-    test_BigInteger_shiftLeft_n(n);
-    test_BigInteger_shiftLeft_n(n);
-    test_BigInteger_shiftLeft_n(n);
+    BigInteger *n = BigInteger_parse("000076DC0981A");
+    test_BigInteger_shiftLeft_n(n, 8);
+    test_BigInteger_shiftLeft_n(n, 8);
+    test_BigInteger_shiftLeft_n(n, 8);
+    test_BigInteger_shiftLeft_n(n, 1);
     BigInteger_free(n);
+}
+
+void test_BigInteger_multiply_from_strs(char *s1, char *s2) {
+    BigInteger *n1 = BigInteger_parse(s1);
+    BigInteger *n2 = BigInteger_parse(s2);
+    BigInteger *rmul = BigInteger_multiply(n1, n2);
+    BigInteger_free(rmul);
+    BigInteger_free(n2);
+    BigInteger_free(n1);
+}
+void test_BigInteger_multiply() {
+    // test_BigInteger_multiply_from_strs("0000", "A425F0");
+    // test_BigInteger_multiply_from_strs("A425F0", "0000");
+    test_BigInteger_multiply_from_strs("76DC0981A", "42BFA1120");
 }
 
 void test_BigInteger_add1(){
@@ -909,6 +921,7 @@ int main(int argc, char **argv){
     test_BigInteger_calcHexDigitsInteger3();
     test_BigInteger_add1();
     test_BigInteger_add2();
+    test_BigInteger_multiply();
     test_BigInteger_and1();
     test_BigInteger_and2();
     test_BigInteger_or();
