@@ -114,6 +114,25 @@ MAX_LINE_LENGTH EQU 84
     %endif
 %endmacro
 
+%macro fprintf_inline 2-*
+    section	.rodata
+        %%format: db %2, NULL_TERMINATOR
+    section	.text
+        %if %0-2
+            void_call fprintf, %1, %%format, %{3:-1}
+        %else
+            void_call fprintf, %1, %%format
+        %endif
+%endmacro
+
+%macro fprintf_line 2-*
+    %if %0-2
+        fprintf_inline %1, {%2, NEW_LINE_TERMINATOR}, %{3:-1}
+    %else
+        fprintf_inline %1, {%2, NEW_LINE_TERMINATOR}
+    %endif
+%endmacro
+
 ; SIGNATURE: mem_mov(r, m1, m2)
 ; DESCRIPTION: m1 = r = m2
 ; EXAMPLE: mem_mov ebx, [ebp-4], [ebp+8]
@@ -188,6 +207,7 @@ section .text
     extern fgets
 
     extern stdin
+    extern stdout
     extern stderr
 
 %ifdef TEST_C
@@ -312,15 +332,15 @@ main: ; main(int argc, char *argv[], char *envp[]): int
 
 ; dbg_print_big_integer(n, ... dbg_print)
 %macro dbg_print_big_integer 1-*
-    ; if (DebugMode) print_big_integer(n);
+    ; if (DebugMode) print_big_integer(n, stdout);
     cmp dword [DebugMode], FALSE
     je %%else
     ; print info
     %if %0-1
-        printf_inline %{2:-1}
+        fprintf_inline [stderr], %{2:-1}
     %endif
-    ; print_big_integer(n)
-    func_call eax, print_big_integer, %1
+    ; print_big_integer(n, stdout)
+    void_call print_big_integer, %1, [stderr]
 
     %%else:
 %endmacro
@@ -330,7 +350,7 @@ main: ; main(int argc, char *argv[], char *envp[]): int
     cmp dword [DebugMode], FALSE
     je %%else
     ; print info
-    printf_line %{1:-1}
+    fprintf_line [stderr], %{1:-1}
     %%else:
 %endmacro
 
@@ -466,7 +486,7 @@ print_top_stack_number: ; print_number_stack_top(): void
     ; n = pop(NumbersStack);
     func_call [$n], BigIntegerStack_pop, [NumbersStack]
     ; print_big_integer(n);
-    func_call eax, print_big_integer, [$n]
+    func_call eax, print_big_integer, [$n], [stdout]
     ; free(n);
     func_call eax, BigInteger_free, [$n]
 
@@ -607,10 +627,11 @@ parse_push_big_integer: ; parse_push_big_integer(char *s): void
     func_exit
     %pop
 
-print_big_integer: ; print_big_integer(BigInteger* n): void
+print_big_integer: ; print_big_integer(BigInteger* n, FILE* f): void
     %push
     ; ----- arguments -----
     %define $n ebp+8
+    %define $f ebp+12
     ; ----- locals -----
     %define $s ebp-4
     ; ----- body ------
@@ -619,7 +640,7 @@ print_big_integer: ; print_big_integer(BigInteger* n): void
     ; s = print(n);
     func_call [$s], BigInteger_toString, [$n]
     ; printf("%s\n", s);
-    printf_line "%s", [$s]
+    fprintf_line [$f], "%s", [$s]
     ; free(s);
     func_call eax, free, [$s]
 
