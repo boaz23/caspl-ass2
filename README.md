@@ -21,4 +21,5 @@ The other agreed to this and it was fine in the end.
 The macros make the code look like some frankenstein mix between x86 assembly and C.
 You'd be the judge of what turned out in the end.
 
-All of the assignments descriptions in this course can be found [here](https://www.cs.bgu.ac.il/~caspl202/Assignments).
+[Full assignment description](https://www.cs.bgu.ac.il/~caspl202/Assignments/Assignment_2)  
+[Course assignments descriptions](https://www.cs.bgu.ac.il/~caspl202/Assignments)
